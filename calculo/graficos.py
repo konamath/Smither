@@ -501,7 +501,16 @@ class GraficoIntegral:
             plt.grid(True, alpha=0.3)
             plt.xlabel(var, fontsize=12)
             plt.ylabel(f'f({var})', fontsize=12)
-            plt.title(f'Integral Definida de {a:.2f} a {b:.2f}', fontsize=14, fontweight='bold')
+            # format limits: try numeric, otherwise leave as-is
+            try:
+                a_fmt = f"{float(a):.2f}"
+            except Exception:
+                a_fmt = str(a)
+            try:
+                b_fmt = f"{float(b):.2f}"
+            except Exception:
+                b_fmt = str(b)
+            plt.title(f'Integral Definida de {a_fmt} a {b_fmt}', fontsize=14, fontweight='bold')
             plt.legend(fontsize=10)
             plt.axhline(y=0, color='k', linewidth=0.5)
             plt.axvline(x=0, color='k', linewidth=0.5)
