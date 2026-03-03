@@ -149,7 +149,13 @@ def _integral_definida():
         # use raw inputs when available for symbolic limits
         low = a_raw if uso_simbolico else a_val
         high = b_raw if uso_simbolico else b_val
-        print(f"  Integral de {low} a {high}: S f({var})d{var} = {valor:.6g}")
+        # format the result gracefully if numeric, otherwise show string
+        try:
+            valor_num = float(valor)
+            valor_str = f"{valor_num:.6g}"
+        except Exception:
+            valor_str = str(valor)
+        print(f"  Integral de {low} a {high}: S f({var})d{var} = {valor_str}")
         print(f"\n  [Info] Valor representa a AREA sob a curva")
         
         plotar = input(f"\n{Cores.OKCYAN}Como exibir o grafico com area? (v)er / (s)alvar / (a)uto [padrao v]: {Cores.ENDC}").strip().lower()
