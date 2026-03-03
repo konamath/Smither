@@ -35,7 +35,8 @@ def menu_integrais():
         print("  2. Integral Definida")
         
         print(f"\n{Cores.BOLD}Funcoes de Multiplas Variaveis:{Cores.ENDC}")
-        print("  3. Integral Dupla (definida ou indefinida)")
+        print("  3. Integral Dupla Definida")
+        print("  4. Integral Dupla Indefinida")
         
         print(f"\n  {Cores.OKBLUE}0{Cores.ENDC}. Voltar ao Menu Anterior\n")
         
@@ -48,7 +49,9 @@ def menu_integrais():
         elif escolha == '2':
             _integral_definida()
         elif escolha == '3':
-            _integral_dupla()
+            _integral_dupla_definida()
+        elif escolha == '4':
+            _integral_dupla_indefinida()
         # opção de integrais triplas removida
         else:
             print(f"{Cores.FAIL}[Erro] Opcao invalida!{Cores.ENDC}")
@@ -165,13 +168,14 @@ def _integral_definida():
         print(f"{Cores.FAIL}[Erro] ao calcular integral{Cores.ENDC}")
 
 
-def _integral_dupla():
-    """Calcula integral dupla, seja definida ou indefinida."""
+def _integral_dupla_definida():
+    """Calcula integral dupla definida."""
     print("\n" + "-"*70)
     print("INTEGRAL DUPLA")
     print("-"*70)
     print("\nExemplo: x*y (com limites x: 0 a 1, y: 0 a 2)")
     
+    # existing code for defined case has been moved here
     expr = input("\nDigite a expressao (use 'x' e 'y'): ").strip()
     
     # Valida expressao
@@ -180,22 +184,6 @@ def _integral_dupla():
         print(f"{Cores.FAIL}[Erro] Expressao invalida: {erro}{Cores.ENDC}")
         return
     
-    tipo = input("Integral definida? (s/n) [s]: ").strip().lower()
-    if tipo.startswith('n'):
-        # indefinida
-        var1 = input("Digite a primeira variavel (ex: x) [x]: ").strip() or 'x'
-        var2 = input("Digite a segunda variavel (ex: y) [y]: ").strip() or 'y'
-        resultado = IntegralDupla.calcular_indefinida(expr, var1, var2)
-        if resultado:
-            orig, simb = resultado
-            print(f"\n{Cores.OKGREEN}[OK] Resultado da integral dupla indefinida:{Cores.ENDC}")
-            print(f"  f({var1},{var2}) = {orig}")
-            print(f"  Integral: F({var1},{var2}) = {simb} + C")
-        else:
-            print(f"{Cores.FAIL}[Erro] ao calcular integral dupla indefinida{Cores.ENDC}")
-        return
-    
-    # caso definido (padrão)
     try:
         x1 = float(input("Limite inferior de x: ").strip())
         x2 = float(input("Limite superior de x: ").strip())
@@ -236,6 +224,29 @@ def _integral_dupla():
     else:
         print(f"{Cores.FAIL}[Erro] ao calcular integral dupla{Cores.ENDC}")
 
+
+
+
+def _integral_dupla_indefinida():
+    """Calcula integral dupla indefinida."""
+    print("\n" + "-"*70)
+    print("INTEGRAL DUPLA INDEFINIDA")
+    print("-"*70)
+    expr = input("\nDigite a expressao (use 'x' e 'y'): ").strip()
+    valida, erro = EngineCalculo.validar_expressao(expr)
+    if not valida:
+        print(f"{Cores.FAIL}[Erro] Expressao invalida: {erro}{Cores.ENDC}")
+        return
+    var1 = input("Digite a primeira variavel (ex: x) [x]: ").strip() or 'x'
+    var2 = input("Digite a segunda variavel (ex: y) [y]: ").strip() or 'y'
+    resultado = IntegralDupla.calcular_indefinida(expr, var1, var2)
+    if resultado:
+        orig, simb = resultado
+        print(f"\n{Cores.OKGREEN}[OK] Resultado da integral dupla indefinida:{Cores.ENDC}")
+        print(f"  f({var1},{var2}) = {orig}")
+        print(f"  Integral: F({var1},{var2}) = {simb} + C")
+    else:
+        print(f"{Cores.FAIL}[Erro] ao calcular integral dupla indefinida{Cores.ENDC}")
 
 # Triple integrals removed by user request.
 

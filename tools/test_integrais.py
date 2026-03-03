@@ -178,12 +178,24 @@ def test_menu_integrais():
         print("  [PASS] menu_integrais function imported successfully")
         
         # Check if it's callable
+        passed_local = 0
+        total_local = 2
         if callable(menu_integrais):
             print("  [PASS] menu_integrais is callable")
-            return 2, 2
+            passed_local += 1
         else:
             print("  [FAIL] menu_integrais is not callable")
-            return 1, 2
+
+        # inspect source for expected option labels
+        import inspect
+        src = inspect.getsource(menu_integrais)
+        if 'Integral Dupla Definida' in src and 'Integral Dupla Indefinida' in src:
+            print("  [PASS] menu_integrais lists both dupla definida and indefinida")
+            passed_local += 1
+        else:
+            print("  [FAIL] menu_integrais missing expected dupla options")
+
+        return passed_local, total_local
     except Exception as e:
         print(f"  [FAIL] Failed to import menu_integrais: {e}")
         return 0, 2
