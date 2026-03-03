@@ -61,6 +61,7 @@ def test_definite_integral():
         ('x**2', 'x', 0, 1, 1/3),     # integral 0 to 1 of x^2 = 1/3
         ('1', 'x', 0, 2, 2),          # integral 0 to 2 of 1 = 2
         ('x', 'x', 0, 2, 2),          # integral 0 to 2 of x = 2
+        ('sin(x)', 'x', 0, 'pi', 2),  # numeric with pi
     ]
     
     passed = 0
