@@ -35,8 +35,8 @@ def menu_integrais():
         print("  2. Integral Definida")
         
         print(f"\n{Cores.BOLD}Funcoes de Multiplas Variaveis:{Cores.ENDC}")
-        print("  3. Integral Dupla Definida")
-        print("  4. Integral Dupla Indefinida")
+        print("  3. Integral Dupla Indefinida")
+        print("  4. Integral Dupla Definida")
         
         print(f"\n  {Cores.OKBLUE}0{Cores.ENDC}. Voltar ao Menu Anterior\n")
         
@@ -49,9 +49,9 @@ def menu_integrais():
         elif escolha == '2':
             _integral_definida()
         elif escolha == '3':
-            _integral_dupla_definida()
-        elif escolha == '4':
             _integral_dupla_indefinida()
+        elif escolha == '4':
+            _integral_dupla_definida()
         # opção de integrais triplas removida
         else:
             print(f"{Cores.FAIL}[Erro] Opcao invalida!{Cores.ENDC}")
@@ -146,7 +146,10 @@ def _integral_definida():
         orig, valor = resultado
         print(f"\n{Cores.OKGREEN}[OK] Resultado:{Cores.ENDC}")
         print(f"  Funcao: f({var}) = {orig}")
-        print(f"  Integral de {a} a {b}: S f({var})d{var} = {valor:.6g}")
+        # use raw inputs when available for symbolic limits
+        low = a_raw if uso_simbolico else a_val
+        high = b_raw if uso_simbolico else b_val
+        print(f"  Integral de {low} a {high}: S f({var})d{var} = {valor:.6g}")
         print(f"\n  [Info] Valor representa a AREA sob a curva")
         
         plotar = input(f"\n{Cores.OKCYAN}Como exibir o grafico com area? (v)er / (s)alvar / (a)uto [padrao v]: {Cores.ENDC}").strip().lower()
@@ -171,7 +174,7 @@ def _integral_definida():
 def _integral_dupla_definida():
     """Calcula integral dupla definida."""
     print("\n" + "-"*70)
-    print("INTEGRAL DUPLA")
+    print("INTEGRAL DUPLA DEFINIDA")
     print("-"*70)
     print("\nExemplo: x*y (com limites x: 0 a 1, y: 0 a 2)")
     
