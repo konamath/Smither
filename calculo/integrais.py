@@ -162,7 +162,11 @@ def _integral_definida():
                 salvar = None
             
             try:
-                res = GraficoIntegral.plotar_area_integral(expr, var, a, b, salvar=salvar)
+                # use numeric bounds when available else raw strings
+                res = GraficoIntegral.plotar_area_integral(expr, var,
+                                                          float(low) if not uso_simbolico else low,
+                                                          float(high) if not uso_simbolico else high,
+                                                          salvar=salvar)
                 if isinstance(res, str):
                     print(f"{Cores.OKGREEN}[OK] Grafico salvo em: {res}{Cores.ENDC}")
             except Exception as e:
