@@ -22,6 +22,8 @@ class GraficoDerivada:
                           titulo: str = "Função", salvar: bool | None = None):
         """
         Plota uma função de uma variável.
+        A expressão é exibida em LaTeX no título e na legenda (quando possível),
+        para que apareça com notação matemática em vez de estilo Python.
         
         Args:
             expr_str: Expressão em string
@@ -33,6 +35,7 @@ class GraficoDerivada:
         try:
             x = sp.symbols(var)
             expr = parse_expr(expr_str)
+            expr_latex = sp.latex(expr)
             f = lambdify(x, expr, 'numpy')
             
             if intervalo is None:
@@ -42,10 +45,11 @@ class GraficoDerivada:
             y_vals = f(x_vals)
             
             plt.figure(figsize=(10, 6))
-            plt.plot(x_vals, y_vals, 'b-', linewidth=2, label=f'f({var}) = {expr_str}')
+            plt.plot(x_vals, y_vals, 'b-', linewidth=2,
+                     label=f'$f({var}) = {expr_latex}$')
             plt.grid(True, alpha=0.3)
             plt.xlabel(var, fontsize=12)
-            plt.ylabel(f'f({var})', fontsize=12)
+            plt.ylabel(f'$f({var})$', fontsize=12)
             plt.title(titulo, fontsize=14, fontweight='bold')
             plt.legend(fontsize=10)
             plt.axhline(y=0, color='k', linewidth=0.5)
@@ -70,6 +74,7 @@ class GraficoDerivada:
                                    salvar: bool | None = None):
         """
         Plota uma função e sua derivada de 1ª ordem no mesmo gráfico.
+        As fórmulas são convertidas para LaTeX nas legendas e títulos.
         
         Args:
             expr_str: Expressão em string
@@ -80,9 +85,10 @@ class GraficoDerivada:
         try:
             x = sp.symbols(var)
             expr = parse_expr(expr_str)
-            
+            expr_latex = sp.latex(expr)
             # Calcula derivada
             derivada = sp.diff(expr, x)
+            derivada_latex = sp.latex(derivada)
             
             f = lambdify(x, expr, 'numpy')
             f_prime = lambdify(x, derivada, 'numpy')
@@ -100,8 +106,8 @@ class GraficoDerivada:
             ax1.plot(x_vals, y_vals, 'b-', linewidth=2.5)
             ax1.grid(True, alpha=0.3)
             ax1.set_xlabel(var, fontsize=11)
-            ax1.set_ylabel(f'f({var})', fontsize=11)
-            ax1.set_title(f'Função Original\nf({var}) = {expr_str}', fontsize=12, fontweight='bold')
+            ax1.set_ylabel(f'$f({var})$', fontsize=11)
+            ax1.set_title(f'Função Original\n$f({var}) = {expr_latex}$', fontsize=12, fontweight='bold')
             ax1.axhline(y=0, color='k', linewidth=0.5)
             ax1.axvline(x=0, color='k', linewidth=0.5)
             
@@ -109,8 +115,8 @@ class GraficoDerivada:
             ax2.plot(x_vals, y_prime_vals, 'r-', linewidth=2.5)
             ax2.grid(True, alpha=0.3)
             ax2.set_xlabel(var, fontsize=11)
-            ax2.set_ylabel(f"f'({var})", fontsize=11)
-            ax2.set_title(f"Derivada de 1ª Ordem\nf'({var}) = {str(derivada)}", 
+            ax2.set_ylabel(f"$f'({var})$", fontsize=11)
+            ax2.set_title(f"Derivada de 1ª Ordem\n$f'({var}) = {derivada_latex}$", 
                          fontsize=12, fontweight='bold')
             ax2.axhline(y=0, color='k', linewidth=0.5)
             ax2.axvline(x=0, color='k', linewidth=0.5)
@@ -135,6 +141,7 @@ class GraficoDerivada:
                           tipo_plot: str = 'surface', salvar: bool | None = None):
         """
         Plota uma função de duas variáveis (superfície ou contorno).
+        A expressão é mostrada em LaTeX no título do gráfico.
         
         Args:
             expr_str: Expressão em string (use 'x' e 'y' como variáveis)
@@ -145,6 +152,7 @@ class GraficoDerivada:
         try:
             x, y = sp.symbols('x y')
             expr = parse_expr(expr_str)
+            expr_latex = sp.latex(expr)
             f = lambdify((x, y), expr, 'numpy')
             
             if intervalo is None:
@@ -162,8 +170,8 @@ class GraficoDerivada:
                 surf = ax.plot_surface(X, Y, Z, cmap='viridis', alpha=0.8)
                 ax.set_xlabel('x', fontsize=11)
                 ax.set_ylabel('y', fontsize=11)
-                ax.set_zlabel('f(x,y)', fontsize=11)
-                ax.set_title(f'Superfície: f(x,y) = {expr_str}', fontsize=12, fontweight='bold')
+                ax.set_zlabel('$f(x,y)$', fontsize=11)
+                ax.set_title(f'Superfície:\n$f(x,y) = {expr_latex}$', fontsize=12, fontweight='bold')
                 fig.colorbar(surf, ax=ax)
             
             elif tipo_plot == 'contour':
@@ -172,7 +180,7 @@ class GraficoDerivada:
                 ax.contour(X, Y, Z, levels=10, colors='black', alpha=0.3, linewidths=0.5)
                 ax.set_xlabel('x', fontsize=11)
                 ax.set_ylabel('y', fontsize=11)
-                ax.set_title(f'Mapa de Contorno: f(x,y) = {expr_str}', fontsize=12, fontweight='bold')
+                ax.set_title(f'Mapa de Contorno:\n$f(x,y) = {expr_latex}$', fontsize=12, fontweight='bold')
                 fig.colorbar(contour, ax=ax)
             
             do_save = _should_save_plots() if salvar is None else bool(salvar)
@@ -193,6 +201,7 @@ class GraficoDerivada:
                             intervalo: tuple = None, salvar: bool | None = None):
         """
         Plota função com pontos de máximo e mínimo marcados.
+        A função exibida na legenda utiliza LaTeX para a fórmula.
         
         Args:
             expr_str: Expressão em string
@@ -204,6 +213,7 @@ class GraficoDerivada:
         try:
             x = sp.symbols(var)
             expr = parse_expr(expr_str)
+            expr_latex = sp.latex(expr)
             f = lambdify(x, expr, 'numpy')
             
             if intervalo is None:
@@ -213,7 +223,7 @@ class GraficoDerivada:
             y_vals = f(x_vals)
             
             plt.figure(figsize=(12, 6))
-            plt.plot(x_vals, y_vals, 'b-', linewidth=2.5, label=f'f({var}) = {expr_str}')
+            plt.plot(x_vals, y_vals, 'b-', linewidth=2.5, label=f'$f({var}) = {expr_latex}$')
             
             # Plotar máximos
             if extremos.get('maximos'):
@@ -266,10 +276,13 @@ class GraficoDerivadaParcial:
         try:
             x, y = sp.symbols('x y')
             expr = parse_expr(expr_str)
+            expr_latex = sp.latex(expr)
             
             # Calcula derivadas parciais
             df_dx = sp.diff(expr, x)
             df_dy = sp.diff(expr, y)
+            df_dx_latex = sp.latex(df_dx)
+            df_dy_latex = sp.latex(df_dy)
             
             if intervalo is None:
                 intervalo = (-5, 5)
@@ -294,24 +307,24 @@ class GraficoDerivadaParcial:
             surf1 = ax1.plot_surface(X, Y, Z, cmap='viridis', alpha=0.8)
             ax1.set_xlabel('x')
             ax1.set_ylabel('y')
-            ax1.set_zlabel('f(x,y)')
-            ax1.set_title(f'Função Original\nf(x,y) = {expr_str}', fontweight='bold')
+            ax1.set_zlabel('$f(x,y)$')
+            ax1.set_title(f'Função Original\n$f(x,y) = {expr_latex}$', fontweight='bold')
             
             # Derivada parcial em relação a x
             ax2 = fig.add_subplot(132, projection='3d')
             surf2 = ax2.plot_surface(X, Y, Z_x, cmap='coolwarm', alpha=0.8)
             ax2.set_xlabel('x')
             ax2.set_ylabel('y')
-            ax2.set_zlabel('∂f/∂x')
-            ax2.set_title(f'Derivada Parcial\n∂f/∂x = {str(df_dx)}', fontweight='bold')
+            ax2.set_zlabel(r'$\frac{\partial f}{\partial x}$')
+            ax2.set_title(rf'Derivada Parcial\n$\displaystyle \frac{{\partial f}}{{\partial x}} = {df_dx_latex}$', fontweight='bold')
             
             # Derivada parcial em relação a y
             ax3 = fig.add_subplot(133, projection='3d')
             surf3 = ax3.plot_surface(X, Y, Z_y, cmap='plasma', alpha=0.8)
             ax3.set_xlabel('x')
             ax3.set_ylabel('y')
-            ax3.set_zlabel('∂f/∂y')
-            ax3.set_title(f'Derivada Parcial\n∂f/∂y = {str(df_dy)}', fontweight='bold')
+            ax3.set_zlabel(r'$\frac{\partial f}{\partial y}$')
+            ax3.set_title(rf'Derivada Parcial\n$\displaystyle \frac{{\partial f}}{{\partial y}} = {df_dy_latex}$', fontweight='bold')
             
             plt.tight_layout()
             
@@ -382,7 +395,7 @@ class GraficoDerivadaParcial:
             ax.plot(x0, y0, 'ro', label=f'Ponto ({x0}, {y0})')
             ax.set_xlabel('x')
             ax.set_ylabel('y')
-            ax.set_title(f'Gradiente em ({x0}, {y0}) | ∇f = ({gx:.3g}, {gy:.3g}), |∇f|={mag:.3g}')
+            ax.set_title(f'Gradiente em ({x0}, {y0}) | $\nabla f = ({gx:.3g}, {gy:.3g})$, $|\nabla f|={mag:.3g}$')
             ax.legend()
             ax.set_xlim(intervalo[0], intervalo[1])
             ax.set_ylim(intervalo[0], intervalo[1])
@@ -457,6 +470,7 @@ class GraficoIntegral:
         try:
             x = sp.symbols(var)
             expr = parse_expr(expr_str)
+            expr_latex = sp.latex(expr)
             f = lambdify(x, expr, 'numpy')
             
             # Define intervalo maior que [a, b] para melhor visualizacao
@@ -474,7 +488,8 @@ class GraficoIntegral:
             plt.figure(figsize=(10, 6))
             
             # Plota a funcao
-            plt.plot(x_vals, y_vals, 'b-', linewidth=2.5, label=f'f({var}) = {expr_str}')
+            expr_latex = sp.latex(expr)
+            plt.plot(x_vals, y_vals, 'b-', linewidth=2.5, label=f'$f({var}) = {expr_latex}$')
             
             # Preenche a area
             plt.fill_between(x_area, 0, y_area, alpha=0.3, color='blue', label=f'Area de integracao')
@@ -527,8 +542,9 @@ class GraficoIntegral:
             
             ax.set_xlabel('x', fontsize=11)
             ax.set_ylabel('y', fontsize=11)
-            ax.set_zlabel('f(x,y)', fontsize=11)
-            ax.set_title(f'Volume sob a superficie: f(x,y) = {expr_str}', fontsize=12, fontweight='bold')
+            ax.set_zlabel('$f(x,y)$', fontsize=11)
+            expr_latex = sp.latex(expr)
+            ax.set_title(f'Volume sob a superficie:\n$f(x,y) = {expr_latex}$', fontsize=12, fontweight='bold')
             fig.colorbar(surf, ax=ax)
             
             do_save = _should_save_plots() if salvar is None else bool(salvar)
