@@ -547,13 +547,16 @@ class IntegralDefinida:
 
 
 class IntegralDupla:
-    """Classe para calcular integrais duplas."""
+    """Classe para calcular integrais duplas.
+
+    Agora suportamos tanto formas definidas (com limites numéricos) quanto
+    indefinidas (sem limites)."""
     
     @staticmethod
     def calcular(expr_str: str, var1: str, a1: float, b1: float,
                  var2: str, a2: float, b2: float) -> Optional[Tuple[str, float]]:
         """
-        Calcula integral dupla ∫∫ f(x,y) dx dy
+        Calcula integral dupla definida ∫∫ f(x,y) dx dy
         
         Args:
             expr_str: expressão em x,y
@@ -571,6 +574,32 @@ class IntegralDupla:
             # Ordem: integra-se primeiro em var1, depois var2
             resultado = integrate(expr, (eval(var1), a1, b1), (eval(var2), a2, b2))
             return (expr_str, float(resultado))
+        except Exception:
+            return None
+    
+    @staticmethod
+    def calcular_indefinida(expr_str: str, var1: str, var2: str) -> Optional[Tuple[str, str]]:
+        """
+        Calcula a integral dupla indefinida de uma função em duas variáveis.
+
+        A integral é feita primeiro em ``var1`` e depois em ``var2``
+        sem limites, retornando uma expressão simbólica.
+
+        Args:
+            expr_str: expressão em x,y
+            var1: primeira variável (integra-se primeiro)
+            var2: segunda variável
+
+        Returns:
+            (expressão original, resultado simbólico em string)
+        """
+        try:
+            v1 = sp.symbols(var1)
+            v2 = sp.symbols(var2)
+            expr = EngineCalculo._parse(expr_str)
+            # integrar sucessivamente
+            resultado = integrate(integrate(expr, v1), v2)
+            return (expr_str, str(resultado))
         except Exception:
             return None
     

@@ -105,6 +105,18 @@ def test_double_integral():
     return passed, len(test_cases)
 
 
+def test_indefinite_double_integral():
+    """Test 3.1: Indefinite double integral symbolic result."""
+    from calculo.engine import IntegralDupla
+    print("\n[Test 3.1] Indefinite Double Integral")
+    res = IntegralDupla.calcular_indefinida('x*y', 'x', 'y')
+    if res and isinstance(res[1], str) and res[1].strip():
+        print(f"  [PASS] indefinite double integral returned: {res[1]}")
+        return 1, 1
+    else:
+        print(f"  [FAIL] indefinite double integral result: {res}")
+        return 0, 1
+
 # Triple integral tests removed (feature deprecated)
 def test_triple_integral():
     """Placeholder for triple integral tests (removed)."""
@@ -220,6 +232,7 @@ def main():
         ('Indefinite Integral', test_indefinite_integral),
         ('Definite Integral', test_definite_integral),
         ('Double Integral', test_double_integral),
+        ('Indefinite Double Integral', test_indefinite_double_integral),
         ('Triple Integral', test_triple_integral),
         ('Area Integral Plot', test_plot_area_integral),
         ('Volume Integral Plot', test_plot_double_integral),
