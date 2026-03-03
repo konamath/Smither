@@ -5,6 +5,7 @@ Menu de Derivadas e Integrais para análises econômicas.
 """
 
 from . import derivadas
+from . import campo_vetorial
 from . import integrais
 
 
@@ -34,6 +35,7 @@ def menu_calculo():
         print(f"\n{Cores.OKBLUE}Escolha uma opção:{Cores.ENDC}")
         print("(1) Derivadas")
         print("(2) Integrais")
+        print("(3) Campo Vetorial (Gradiente)")
         print("(0) Voltar ao menu principal")
         
         opcao = input(f"\n{Cores.OKGREEN}Digite sua opcao: {Cores.ENDC}").strip()
@@ -42,6 +44,8 @@ def menu_calculo():
             derivadas.menu_derivadas()
         elif opcao == "2":
             integrais.menu_integrais()
+        elif opcao == "3":
+            campo_vetorial.menu_campo_vetorial()
         elif opcao == "0":
             print(f"\n{Cores.WARNING}Voltando ao menu principal...{Cores.ENDC}")
             return

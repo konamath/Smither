@@ -109,6 +109,33 @@ def main():
     
     t.teste("Derivada de x^3 em x=2 (esperado 12)", test_deriv_ponto_2)
     
+    # menu-level input should accept symbolic constants like pi
+    def test_menu_deriv_ponto_constante():
+        import calculo.derivadas as dmod
+        from io import StringIO
+        import sys, builtins
+
+        inputs = iter(['x**2', 'x', 'pi'])
+        def fake_input(prompt=''):
+            return next(inputs)
+
+        old_input = builtins.input
+        old_stdout = sys.stdout
+        sys.stdout = StringIO()
+        builtins.input = fake_input
+        try:
+            dmod._calcular_derivada_ponto()
+            out = sys.stdout.getvalue()
+            # expect no error and a result printed (pi substituted or shown)
+            return 'Resultado' in out and "f'(" in out
+        except Exception:
+            return False
+        finally:
+            sys.stdout = old_stdout
+            builtins.input = old_input
+
+    t.teste("Menu: derivada em pi não acusa erro", test_menu_deriv_ponto_constante)
+    
     # SECAO 4: PONTOS CRITICOS E EXTREMOS 1VAR
     print("\n[SECAO 4] Extremos em 1 Variavel")
     print("-" * 70)
@@ -235,6 +262,13 @@ def main():
         return f is not None and Path(f).exists()
     
     t.teste("Gerar grafico com vetor gradiente", test_plot_gradiente)
+    
+    # Teste adicional: gráfica de derivadas parciais deve funcionar sem erro
+    def test_plot_parciais():
+        f = GraficoDerivadaParcial.plotar_derivada_parcial('x**4 + 5*x*y**3', salvar=True)
+        return f is not None and Path(f).exists()
+    
+    t.teste("Gerar gráfico de derivadas parciais", test_plot_parciais)
     
     # RESUMO FINAL
     sucesso = t.imprimir_resumo()

@@ -8,10 +8,11 @@ import os
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
-from sympy import parse_expr, lambdify
+from sympy import lambdify
 import sympy as sp
 from datetime import datetime
 from pathlib import Path
+from .engine import EngineCalculo
 
 
 class GraficoDerivada:
@@ -34,7 +35,7 @@ class GraficoDerivada:
         """
         try:
             x = sp.symbols(var)
-            expr = parse_expr(expr_str)
+            expr = EngineCalculo._parse(expr_str)
             expr_latex = sp.latex(expr)
             f = lambdify(x, expr, 'numpy')
             
@@ -84,7 +85,7 @@ class GraficoDerivada:
         """
         try:
             x = sp.symbols(var)
-            expr = parse_expr(expr_str)
+            expr = EngineCalculo._parse(expr_str)
             expr_latex = sp.latex(expr)
             # Calcula derivada
             derivada = sp.diff(expr, x)
@@ -151,7 +152,7 @@ class GraficoDerivada:
         """
         try:
             x, y = sp.symbols('x y')
-            expr = parse_expr(expr_str)
+            expr = EngineCalculo._parse(expr_str)
             expr_latex = sp.latex(expr)
             f = lambdify((x, y), expr, 'numpy')
             
@@ -212,7 +213,7 @@ class GraficoDerivada:
         """
         try:
             x = sp.symbols(var)
-            expr = parse_expr(expr_str)
+            expr = EngineCalculo._parse(expr_str)
             expr_latex = sp.latex(expr)
             f = lambdify(x, expr, 'numpy')
             
@@ -265,6 +266,61 @@ class GraficoDerivada:
             print(f"❌ Erro ao plotar gráfico: {e}")
     
 
+    @staticmethod
+    def plotar_reta_tangente_1var(expr_str: str, var: str, ponto: float,
+                                  intervalo: tuple = None, salvar: bool | None = None):
+        """
+        Plota a funcao de uma variavel com a reta tangente em um ponto.
+        """
+        try:
+            x = sp.symbols(var)
+            expr = EngineCalculo._parse(expr_str)
+            expr_latex = sp.latex(expr)
+            derivada = sp.diff(expr, x)
+
+            ponto_num = float(ponto)
+            ponto_sym = sp.Float(ponto_num)
+            y0 = float(sp.N(expr.subs(x, ponto_sym)))
+            m = float(sp.N(derivada.subs(x, ponto_sym)))
+            reta_expr = sp.expand(
+                sp.N(derivada.subs(x, ponto_sym)) * (x - ponto_sym)
+                + sp.N(expr.subs(x, ponto_sym))
+            )
+
+            f = lambdify(x, expr, 'numpy')
+
+            if intervalo is None:
+                intervalo = (-10, 10)
+
+            x_vals = np.linspace(intervalo[0], intervalo[1], 500)
+            y_vals = np.asarray(f(x_vals), dtype=float)
+            reta_vals = m * (x_vals - ponto_num) + y0
+
+            plt.figure(figsize=(10, 6))
+            plt.plot(x_vals, y_vals, 'b-', linewidth=2.5, label=f'$f({var}) = {expr_latex}$')
+            plt.plot(x_vals, reta_vals, 'r--', linewidth=2.2, label=f'$y = {sp.latex(reta_expr)}$')
+            plt.plot(ponto_num, y0, 'ko', markersize=8, label=f'Ponto de tangencia ({ponto_num:.3g}, {y0:.3g})')
+            plt.grid(True, alpha=0.3)
+            plt.xlabel(var, fontsize=12)
+            plt.ylabel(f'$f({var})$', fontsize=12)
+            plt.title(f'Reta Tangente em {var} = {ponto_num:.3g}', fontsize=14, fontweight='bold')
+            plt.legend(fontsize=10, loc='best')
+            plt.axhline(y=0, color='k', linewidth=0.5)
+            plt.axvline(x=0, color='k', linewidth=0.5)
+
+            do_save = _should_save_plots() if salvar is None else bool(salvar)
+            if do_save:
+                out = _ensure_output_dir()
+                fname = out / f'reta_tangente_{_timestamp()}.png'
+                plt.savefig(fname, dpi=150, bbox_inches='tight')
+                plt.close()
+                return str(fname)
+
+            plt.show()
+        except Exception as e:
+            print(f"Erro ao plotar reta tangente: {e}")
+
+
 class GraficoDerivadaParcial:
     """Classe para visualizar derivadas parciais em funções de 2 variáveis."""
     
@@ -275,7 +331,7 @@ class GraficoDerivadaParcial:
         """
         try:
             x, y = sp.symbols('x y')
-            expr = parse_expr(expr_str)
+            expr = EngineCalculo._parse(expr_str)
             expr_latex = sp.latex(expr)
             
             # Calcula derivadas parciais
@@ -316,7 +372,15 @@ class GraficoDerivadaParcial:
             ax2.set_xlabel('x')
             ax2.set_ylabel('y')
             ax2.set_zlabel(r'$\frac{\partial f}{\partial x}$')
-            ax2.set_title(rf'Derivada Parcial\n$\displaystyle \frac{{\partial f}}{{\partial x}} = {df_dx_latex}$', fontweight='bold')
+            # build title carefully to avoid Python escape warnings
+            title_x = (
+                "Derivada Parcial\n"
+                + "$"  # math mode start
+                + "\\frac{\\partial f}{\\partial x} = "
+                + df_dx_latex
+                + "$"
+            )
+            ax2.set_title(title_x, fontweight='bold')
             
             # Derivada parcial em relação a y
             ax3 = fig.add_subplot(133, projection='3d')
@@ -324,7 +388,14 @@ class GraficoDerivadaParcial:
             ax3.set_xlabel('x')
             ax3.set_ylabel('y')
             ax3.set_zlabel(r'$\frac{\partial f}{\partial y}$')
-            ax3.set_title(rf'Derivada Parcial\n$\displaystyle \frac{{\partial f}}{{\partial y}} = {df_dy_latex}$', fontweight='bold')
+            title_y = (
+                "Derivada Parcial\n"
+                + "$"
+                + "\\frac{\\partial f}{\\partial y} = "
+                + df_dy_latex
+                + "$"
+            )
+            ax3.set_title(title_y, fontweight='bold')
             
             plt.tight_layout()
             
@@ -355,7 +426,7 @@ class GraficoDerivadaParcial:
         """
         try:
             x, y = sp.symbols('x y')
-            expr = parse_expr(expr_str)
+            expr = EngineCalculo._parse(expr_str)
             
             # Gradientes simbólicos e funções numéricas
             df_dx = sp.diff(expr, x)
@@ -411,6 +482,170 @@ class GraficoDerivadaParcial:
             plt.show()
         except Exception as e:
             print(f"❌ Erro ao plotar gradiente no ponto: {e}")
+
+
+    @staticmethod
+    def plotar_campo_gradiente_2var(expr_str: str, intervalo: tuple = None, salvar: bool | None = None):
+        """
+        Plota um mapa de contorno da funcao f(x, y) com o campo vetorial
+        do gradiente sobreposto.
+        """
+        try:
+            x, y = sp.symbols('x y')
+            expr = EngineCalculo._parse(expr_str)
+            expr_latex = sp.latex(expr)
+
+            df_dx = sp.diff(expr, x)
+            df_dy = sp.diff(expr, y)
+
+            f = lambdify((x, y), expr, 'numpy')
+            f_dx = lambdify((x, y), df_dx, 'numpy')
+            f_dy = lambdify((x, y), df_dy, 'numpy')
+
+            if intervalo is None:
+                intervalo = (-5, 5)
+
+            x_vals = np.linspace(intervalo[0], intervalo[1], 160)
+            y_vals = np.linspace(intervalo[0], intervalo[1], 160)
+            X, Y = np.meshgrid(x_vals, y_vals)
+
+            Z = np.asarray(f(X, Y), dtype=float)
+            if Z.shape == ():
+                Z = np.full_like(X, float(Z))
+
+            x_vec = np.linspace(intervalo[0], intervalo[1], 17)
+            y_vec = np.linspace(intervalo[0], intervalo[1], 17)
+            Xv, Yv = np.meshgrid(x_vec, y_vec)
+
+            U = np.asarray(f_dx(Xv, Yv), dtype=float)
+            V = np.asarray(f_dy(Xv, Yv), dtype=float)
+
+            if U.shape == ():
+                U = np.full_like(Xv, float(U))
+            if V.shape == ():
+                V = np.full_like(Yv, float(V))
+
+            magnitude = np.hypot(U, V)
+            U_plot = np.zeros_like(U, dtype=float)
+            V_plot = np.zeros_like(V, dtype=float)
+
+            mask = np.isfinite(magnitude) & (magnitude > 1e-12)
+            U_plot[mask] = U[mask] / magnitude[mask]
+            V_plot[mask] = V[mask] / magnitude[mask]
+
+            fig, ax = plt.subplots(figsize=(10, 8))
+            contour = ax.contourf(X, Y, Z, levels=25, cmap='viridis')
+            ax.contour(X, Y, Z, levels=12, colors='black', alpha=0.25, linewidths=0.5)
+            fig.colorbar(contour, ax=ax, label='$f(x,y)$')
+
+            ax.quiver(
+                Xv,
+                Yv,
+                U_plot,
+                V_plot,
+                color='white',
+                alpha=0.9,
+                pivot='mid',
+                scale=22,
+                width=0.004,
+            )
+
+            ax.set_xlabel('x', fontsize=11)
+            ax.set_ylabel('y', fontsize=11)
+            ax.set_title(
+                f'Campo Vetorial do Gradiente\n$f(x,y) = {expr_latex}$',
+                fontsize=12,
+                fontweight='bold',
+            )
+            ax.set_xlim(intervalo[0], intervalo[1])
+            ax.set_ylim(intervalo[0], intervalo[1])
+            ax.grid(True, alpha=0.15)
+
+            do_save = _should_save_plots() if salvar is None else bool(salvar)
+            if do_save:
+                out = _ensure_output_dir()
+                fname = out / f'campo_vetorial_gradiente_{_timestamp()}.png'
+                plt.savefig(fname, dpi=150, bbox_inches='tight')
+                plt.close()
+                return str(fname)
+
+            plt.show()
+        except Exception as e:
+            print(f"Erro ao plotar campo vetorial: {e}")
+
+
+    @staticmethod
+    def plotar_plano_tangente_2var(expr_str: str, ponto: tuple,
+                                   intervalo: tuple = None, salvar: bool | None = None):
+        """
+        Plota a superficie z = f(x, y) junto com o plano tangente no ponto.
+        """
+        try:
+            x, y = sp.symbols('x y')
+            expr = EngineCalculo._parse(expr_str)
+            expr_latex = sp.latex(expr)
+
+            a, b = float(ponto[0]), float(ponto[1])
+            subs_dict = {x: a, y: b}
+
+            df_dx = sp.diff(expr, x)
+            df_dy = sp.diff(expr, y)
+
+            f0 = float(sp.N(expr.subs(subs_dict)))
+            fx0 = float(sp.N(df_dx.subs(subs_dict)))
+            fy0 = float(sp.N(df_dy.subs(subs_dict)))
+
+            plano_expr = sp.expand(f0 + fx0 * (x - a) + fy0 * (y - b))
+            plano_expr_titulo = plano_expr.xreplace({
+                numero: sp.Float(round(float(numero), 2))
+                for numero in plano_expr.atoms(sp.Float)
+            })
+
+            f = lambdify((x, y), expr, 'numpy')
+
+            if intervalo is None:
+                intervalo = (-5, 5)
+
+            x_vals = np.linspace(intervalo[0], intervalo[1], 80)
+            y_vals = np.linspace(intervalo[0], intervalo[1], 80)
+            X, Y = np.meshgrid(x_vals, y_vals)
+
+            Z = np.asarray(f(X, Y), dtype=float)
+            if Z.shape == ():
+                Z = np.full_like(X, float(Z))
+
+            Z_plane = f0 + fx0 * (X - a) + fy0 * (Y - b)
+
+            from mpl_toolkits.mplot3d import Axes3D
+            fig = plt.figure(figsize=(12, 8))
+            ax = fig.add_subplot(111, projection='3d')
+
+            ax.plot_surface(X, Y, Z, cmap='viridis', alpha=0.6)
+            ax.plot_surface(X, Y, Z_plane, cmap='coolwarm', alpha=0.45)
+            ax.scatter([a], [b], [f0], color='black', s=50)
+
+            ax.set_xlabel('x', fontsize=11)
+            ax.set_ylabel('y', fontsize=11)
+            ax.set_zlabel('$z$', fontsize=11)
+            ax.set_title(
+                "Plano Tangente\n"
+                + f"$f(x,y) = {expr_latex}$\n"
+                + f"$z = {sp.latex(plano_expr_titulo)}$",
+                fontsize=11,
+                fontweight='bold',
+            )
+
+            do_save = _should_save_plots() if salvar is None else bool(salvar)
+            if do_save:
+                out = _ensure_output_dir()
+                fname = out / f'plano_tangente_{_timestamp()}.png'
+                plt.savefig(fname, dpi=150, bbox_inches='tight')
+                plt.close()
+                return str(fname)
+
+            plt.show()
+        except Exception as e:
+            print(f"Erro ao plotar plano tangente: {e}")
 
 
 def _ensure_output_dir() -> Path:
@@ -469,7 +704,7 @@ class GraficoIntegral:
         """
         try:
             x = sp.symbols(var)
-            expr = parse_expr(expr_str)
+            expr = EngineCalculo._parse(expr_str)
             expr_latex = sp.latex(expr)
             f = lambdify(x, expr, 'numpy')
             
@@ -535,7 +770,7 @@ class GraficoIntegral:
         """
         try:
             x, y = sp.symbols('x y')
-            expr = parse_expr(expr_str)
+            expr = EngineCalculo._parse(expr_str)
             f = lambdify((x, y), expr, 'numpy')
             
             x_vals = np.linspace(x_min, x_max, 100)

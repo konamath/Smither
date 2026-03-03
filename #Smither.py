@@ -86,6 +86,62 @@ class SmitherMotor:
             print(f"{Cores.WARNING}Módulo '{nome_modulo}' não possui função 'menu()'{Cores.ENDC}")
 
 
+def exibir_guia_sintaxe():
+    """Exibe um guia rápido da sintaxe matemática aceita pelo projeto."""
+    print(f"\n{Cores.BOLD}GUIA DE SINTAXE MATEMÁTICA{Cores.ENDC}\n")
+    print("Estas são as formas recomendadas para escrever expressões:")
+    print("")
+    print(f"{Cores.OKBLUE}Variáveis:{Cores.ENDC}")
+    print("  x, y, z")
+    print("  Exemplos: x**2, 3x, 2xy, x*y")
+    print("")
+    print(f"{Cores.OKBLUE}Operações básicas:{Cores.ENDC}")
+    print("  Soma:           a + b")
+    print("  Subtração:      a - b")
+    print("  Multiplicação:  a*b  ou  3x")
+    print("  Divisão:        a/b")
+    print("  Potência:       x**2")
+    print("  Parênteses:     (x + 1)*(x - 1)")
+    print("")
+    print(f"{Cores.OKBLUE}Constantes:{Cores.ENDC}")
+    print("  e ou E          constante de Euler")
+    print("  pi ou Pi        número pi")
+    print("  oo              infinito")
+    print("")
+    print(f"{Cores.OKBLUE}Exponenciais e logaritmos:{Cores.ENDC}")
+    print("  exp(x)          e**x")
+    print("  e**x            exponencial com base e")
+    print("  log(x)          logaritmo natural")
+    print("  log(x, 10)      logaritmo em outra base")
+    print("  sqrt(x)         raiz quadrada")
+    print("")
+    print(f"{Cores.OKBLUE}Trigonométricas:{Cores.ENDC}")
+    print("  sin(x), cos(x), tan(x)")
+    print("  asin(x), acos(x), atan(x)")
+    print("  Também funciona em casos simples: sinx, cosx, tanx")
+    print("")
+    print(f"{Cores.OKBLUE}Hiperbólicas:{Cores.ENDC}")
+    print("  sinh(x), cosh(x), tanh(x)")
+    print("")
+    print(f"{Cores.OKBLUE}Outras funções úteis:{Cores.ENDC}")
+    print("  abs(x)          valor absoluto")
+    print("  factorial(n)    fatorial")
+    print("  sign(x)         sinal")
+    print("  Outras funções do SymPy também podem funcionar")
+    print("  se forem escritas com parênteses, como sec(x)")
+    print("")
+    print(f"{Cores.OKBLUE}Exemplos válidos:{Cores.ENDC}")
+    print("  e**x")
+    print("  exp(-x**2)")
+    print("  sin(x) + cos(x)")
+    print("  log(x) / x")
+    print("  sqrt(x**2 + 1)")
+    print("  x**3 - 3x + 2")
+    print("")
+    print(f"{Cores.WARNING}Dica NumPy:{Cores.ENDC} em código Python com NumPy, use")
+    print("np.exp(x), np.sin(x), np.cos(x), np.tan(x), np.pi e np.e.")
+
+
 def exibir_cabecalho():
     """Exibe o cabeçalho da aplicação."""
     print(f"\n{Cores.HEADER}{Cores.BOLD}")
@@ -111,6 +167,8 @@ def exibir_menu_principal(motor):
         nome_formatado = modulo.replace('_', ' ').title()
         print(f"  {Cores.OKBLUE}{idx}{Cores.ENDC}. {nome_formatado}")
     
+    opcao_guia = len(modulos) + 1
+    print(f"  {Cores.OKBLUE}{opcao_guia}{Cores.ENDC}. Guia de Sintaxe Matemática")
     print(f"  {Cores.OKBLUE}0{Cores.ENDC}. Sair\n")
     
     try:
@@ -120,6 +178,8 @@ def exibir_menu_principal(motor):
             return None
         
         idx = int(escolha) - 1
+        if idx == len(modulos):
+            return "guia"
         if 0 <= idx < len(modulos):
             return modulos[idx]
         else:
@@ -131,17 +191,57 @@ def exibir_menu_principal(motor):
         return "invalido"
 
 
+def exibir_menu_principal_ordenado(motor):
+    """Exibe o menu principal com o guia na primeira opção."""
+    modulos = motor.obter_modulos_ordenados()
+
+    print(f"{Cores.BOLD}Módulos Disponíveis:{Cores.ENDC}\n")
+    print(f"  {Cores.OKBLUE}1{Cores.ENDC}. Guia de Sintaxe Matemática")
+
+    if not modulos:
+        print(f"\n{Cores.FAIL}Nenhum módulo disponível.{Cores.ENDC}")
+
+    for idx, modulo in enumerate(modulos, 2):
+        nome_formatado = modulo.replace('_', ' ').title()
+        print(f"  {Cores.OKBLUE}{idx}{Cores.ENDC}. {nome_formatado}")
+
+    print(f"  {Cores.OKBLUE}0{Cores.ENDC}. Sair\n")
+
+    try:
+        escolha = input(f"{Cores.OKCYAN}Escolha uma opção: {Cores.ENDC}").strip()
+
+        if escolha == '0':
+            return None
+
+        if escolha == '1':
+            return "guia"
+
+        idx = int(escolha) - 2
+        if 0 <= idx < len(modulos):
+            return modulos[idx]
+
+        print(f"{Cores.FAIL}Opção inválida!{Cores.ENDC}")
+        return "invalido"
+
+    except ValueError:
+        print(f"{Cores.FAIL}Por favor, digite um número válido.{Cores.ENDC}")
+        return "invalido"
+
+
 def menu_principal():
     """Loop principal da aplicação."""
     motor = SmitherMotor()
     
     while True:
         exibir_cabecalho()
-        escolha = exibir_menu_principal(motor)
+        escolha = exibir_menu_principal_ordenado(motor)
         
         if escolha is None:
             print(f"{Cores.OKGREEN}Obrigado por usar Smither!{Cores.ENDC}\n")
             break
+        elif escolha == "guia":
+            exibir_guia_sintaxe()
+            input(f"\n{Cores.WARNING}Pressione ENTER para voltar ao menu...{Cores.ENDC}")
         elif escolha == "invalido":
             input(f"{Cores.WARNING}Pressione ENTER para continuar...{Cores.ENDC}")
             continue

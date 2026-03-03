@@ -62,7 +62,13 @@ class EngineCalculo:
             expr_str = re.sub(pattern, _insert_parens, expr_str)
 
         transformations = standard_transformations + (implicit_multiplication_application,)
-        return _parse_expr(expr_str, transformations=transformations)
+        local_dict = {
+            'e': sp.E,
+            'E': sp.E,
+            'pi': sp.pi,
+            'Pi': sp.pi,
+        }
+        return _parse_expr(expr_str, transformations=transformations, local_dict=local_dict)
     
     @staticmethod
     def validar_expressao(expr_str: str) -> Tuple[bool, Optional[str]]:
@@ -122,6 +128,35 @@ class Derivada:
             derivada = diff(expr, x, ordem)
             resultado = derivada.subs(x, ponto)
             return float(resultado)
+        except Exception:
+            return None
+
+    @staticmethod
+    def calcular_reta_tangente(expressao_str: str, variavel: str,
+                               ponto: Union[float, str]) -> Optional[dict]:
+        """
+        Calcula a reta tangente de f(x) em x = a.
+
+        Returns:
+            dict com a funcao, ponto, valor, coeficiente angular e equacao
+        """
+        try:
+            x = sp.symbols(variavel)
+            expr = EngineCalculo._parse(expressao_str)
+            ponto_expr = EngineCalculo._parse(str(ponto))
+            derivada = diff(expr, x)
+
+            y0 = sp.simplify(expr.subs(x, ponto_expr))
+            m = sp.simplify(derivada.subs(x, ponto_expr))
+            reta = sp.expand(m * (x - ponto_expr) + y0)
+
+            return {
+                'funcao': str(expr),
+                'ponto': str(ponto_expr),
+                'valor_ponto': str(y0),
+                'coef_angular': str(m),
+                'equacao': str(reta),
+            }
         except Exception:
             return None
 
@@ -278,6 +313,42 @@ class DerivadaParcial:
             df_dy_val = float(df_dy.subs(subs_dict))
             
             return (df_dx_val, df_dy_val)
+        except Exception:
+            return None
+
+    @staticmethod
+    def calcular_plano_tangente(expressao_str: str, valores: dict) -> Optional[dict]:
+        """
+        Calcula o plano tangente de z = f(x, y) em um ponto (a, b).
+
+        Returns:
+            dict com o ponto, derivadas parciais no ponto e equacao do plano
+        """
+        try:
+            x, y = sp.symbols('x y')
+            expr = EngineCalculo._parse(expressao_str)
+
+            a = EngineCalculo._parse(str(valores['x']))
+            b = EngineCalculo._parse(str(valores['y']))
+
+            df_dx = diff(expr, x)
+            df_dy = diff(expr, y)
+
+            subs_dict = {x: a, y: b}
+            f0 = sp.simplify(expr.subs(subs_dict))
+            fx0 = sp.simplify(df_dx.subs(subs_dict))
+            fy0 = sp.simplify(df_dy.subs(subs_dict))
+            plano = sp.expand(f0 + fx0 * (x - a) + fy0 * (y - b))
+
+            return {
+                'funcao': str(expr),
+                'ponto_x': str(a),
+                'ponto_y': str(b),
+                'valor_ponto': str(f0),
+                'df_dx_ponto': str(fx0),
+                'df_dy_ponto': str(fy0),
+                'equacao': str(plano),
+            }
         except Exception:
             return None
 
@@ -569,11 +640,59 @@ class IntegralDupla:
             (expressão original, valor numérico)
         """
         try:
-            x, y = sp.symbols(f'{var1} {var2}')
+            var1_sym = sp.symbols(var1)
+            var2_sym = sp.symbols(var2)
             expr = EngineCalculo._parse(expr_str)
             # Ordem: integra-se primeiro em var1, depois var2
-            resultado = integrate(expr, (eval(var1), a1, b1), (eval(var2), a2, b2))
+            resultado = integrate(expr, (var1_sym, a1, b1), (var2_sym, a2, b2))
             return (expr_str, float(resultado))
+        except Exception:
+            return None
+
+    @staticmethod
+    def calcular_ordenada(expr_str: str, ordem: str,
+                          limite_inf_interno: str, limite_sup_interno: str,
+                          limite_inf_externo: str, limite_sup_externo: str) -> Optional[Tuple[str, str]]:
+        """
+        Calcula integral dupla definida com ordem explicita de integracao.
+
+        Para ``dxdy``, os limites de ``x`` podem depender de ``y``.
+        Para ``dydx``, os limites de ``y`` podem depender de ``x``.
+        Os limites externos devem ser constantes.
+        """
+        try:
+            ordem_norm = ordem.replace(' ', '').lower()
+            if ordem_norm not in ('dxdy', 'dydx'):
+                return None
+
+            x, y = sp.symbols('x y')
+            expr = EngineCalculo._parse(expr_str)
+
+            if ordem_norm == 'dxdy':
+                var_interno = x
+                var_externo = y
+            else:
+                var_interno = y
+                var_externo = x
+
+            a_interno = EngineCalculo._parse(limite_inf_interno)
+            b_interno = EngineCalculo._parse(limite_sup_interno)
+            a_externo = EngineCalculo._parse(limite_inf_externo)
+            b_externo = EngineCalculo._parse(limite_sup_externo)
+
+            if a_externo.free_symbols or b_externo.free_symbols:
+                return None
+
+            simbolos_internos = a_interno.free_symbols | b_interno.free_symbols
+            if simbolos_internos - {var_externo}:
+                return None
+
+            resultado = integrate(
+                expr,
+                (var_interno, a_interno, b_interno),
+                (var_externo, a_externo, b_externo),
+            )
+            return (str(expr), str(sp.simplify(resultado)))
         except Exception:
             return None
     
@@ -610,15 +729,19 @@ class IntegralDupla:
         Calcula integral dupla com segundo limite simbólico (ex: y de 0 a x).
         """
         try:
-            var1_sym = sp.symbols(var1)
-            var2_sym = sp.symbols(var2)
-            expr = parse_expr(expr_str)
-            
-            a2 = parse_expr(a2_str.replace(var1, str(var1_sym)))
-            b2 = parse_expr(b2_str.replace(var1, str(var1_sym)))
-            
-            resultado = integrate(expr, (var1_sym, a1, b1), (var2_sym, a2, b2))
-            return (expr_str, float(resultado))
+            resultado = IntegralDupla.calcular_ordenada(
+                expr_str,
+                f'd{var1}d{var2}',
+                str(a1),
+                str(b1),
+                a2_str,
+                b2_str,
+            )
+            if not resultado:
+                return None
+
+            orig, valor = resultado
+            return (orig, float(sp.N(EngineCalculo._parse(valor))))
         except Exception:
             return None
 

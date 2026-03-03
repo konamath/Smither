@@ -154,11 +154,21 @@ def _calcular_derivada_ponto():
     expr = input("\nDigite a expressão (ex: x**2 + 5*x): ").strip()
     var = input("Digite a variável (ex: x): ").strip()
     
+    # Ler ponto como string para permitir símbolos (
+    # ex: pi, e, 2*pi, etc.)
+    ponto_raw = input("Digite o ponto (ex: 2, 3.5): ").strip()
+    ponto = None
+    uso_simbolico = False
     try:
-        ponto = float(input("Digite o ponto (ex: 2, 3.5): ").strip())
-    except ValueError:
-        print(f"{Cores.FAIL}❌ Digite um número válido{Cores.ENDC}")
-        return
+        ponto = float(ponto_raw)
+    except Exception:
+        try:
+            import sympy as _sp
+            ponto = float(_sp.N(_sp.sympify(ponto_raw)))
+            uso_simbolico = True
+        except Exception:
+            print(f"{Cores.FAIL}❌ Digite um número válido{Cores.ENDC}")
+            return
     
     # Valida expressão
     valida, erro = EngineCalculo.validar_expressao(expr)
@@ -169,9 +179,10 @@ def _calcular_derivada_ponto():
     valor = Derivada.calcular_ponto(expr, var, ponto, ordem=1)
     
     if valor is not None:
+        display_point = ponto_raw if uso_simbolico else ponto
         print(f"\n{Cores.OKGREEN}✓ Resultado:{Cores.ENDC}")
-        print(f"  f'({ponto}) = {valor:.6g}")
-        print(f"\n  📊 Interpretação: Taxa de variação em x = {ponto}")
+        print(f"  f'({display_point}) = {valor:.6g}")
+        print(f"\n  📊 Interpretação: Taxa de variação em x = {display_point}")
     else:
         print(f"{Cores.FAIL}❌ Erro ao calcular{Cores.ENDC}")
 
@@ -420,9 +431,8 @@ def _extremos_2var():
         
         # Calcula valor da função no ponto
         import sympy as sp
-        from sympy import parse_expr
         x_sym, y_sym = sp.symbols('x y')
-        f = parse_expr(expr)
+        f = EngineCalculo._parse(expr)
         f_val = float(f.subs({x_sym: x, y_sym: y}))
         print(f"  f({x:.4f}, {y:.4f}) = {f_val:.6g}")
     
@@ -454,3 +464,180 @@ def _obter_intervalo():
     except ValueError:
         print(f"{Cores.WARNING}⚠ Usando intervalo padrão (-10, 10){Cores.ENDC}")
         return (-10, 10)
+
+
+def _ler_valor_real(valor_raw: str):
+    """Converte entrada textual em numero real, aceitando pi, e, etc."""
+    try:
+        return float(valor_raw)
+    except Exception:
+        try:
+            import sympy as sp
+            valor = EngineCalculo._parse(valor_raw)
+            if getattr(valor, 'is_real', None) is False:
+                return None
+            return float(sp.N(valor))
+        except Exception:
+            return None
+
+
+def _calcular_reta_tangente():
+    """Calcula a reta tangente de uma funcao de uma variavel."""
+    print("\n" + "-" * 70)
+    print("RETA TANGENTE (UMA VARIAVEL)")
+    print("-" * 70)
+
+    expr = input("\nDigite a expressao (ex: x**2 + 3*x + 1): ").strip()
+    var = input("Digite a variavel (ex: x): ").strip()
+    ponto_raw = input("Digite o ponto de tangencia (ex: 2, pi): ").strip()
+
+    ponto = _ler_valor_real(ponto_raw)
+    if ponto is None:
+        print(f"{Cores.FAIL}Erro: digite um ponto real valido.{Cores.ENDC}")
+        return
+
+    valida, erro = EngineCalculo.validar_expressao(expr)
+    if not valida:
+        print(f"{Cores.FAIL}Erro: expressao invalida: {erro}{Cores.ENDC}")
+        return
+
+    resultado = Derivada.calcular_reta_tangente(expr, var, ponto_raw)
+    if not resultado:
+        print(f"{Cores.FAIL}Erro ao calcular reta tangente.{Cores.ENDC}")
+        return
+
+    print(f"\n{Cores.OKGREEN}Resultado:{Cores.ENDC}")
+    print(f"  Funcao: f({var}) = {resultado['funcao']}")
+    print(f"  Ponto: {var} = {ponto_raw}")
+    print(f"  f({ponto_raw}) = {resultado['valor_ponto']}")
+    print(f"  Coeficiente angular: {resultado['coef_angular']}")
+    print(f"  Reta tangente: y = {resultado['equacao']}")
+
+    plotar = input(
+        f"\n{Cores.OKCYAN}Como exibir o grafico? (v)er / (s)alvar / (a)uto [padrao v]: {Cores.ENDC}"
+    ).strip().lower()
+    if plotar in ('v', ''):
+        salvar = False
+    elif plotar == 's':
+        salvar = True
+    else:
+        salvar = None
+
+    intervalo = _obter_intervalo()
+    try:
+        res = GraficoDerivada.plotar_reta_tangente_1var(expr, var, ponto, intervalo=intervalo, salvar=salvar)
+        if isinstance(res, str):
+            print(f"{Cores.OKGREEN}Grafico salvo em: {res}{Cores.ENDC}")
+    except Exception as e:
+        print(f"{Cores.FAIL}Erro ao gerar grafico: {e}{Cores.ENDC}")
+
+
+def _calcular_plano_tangente():
+    """Calcula o plano tangente de uma funcao de duas variaveis."""
+    print("\n" + "-" * 70)
+    print("PLANO TANGENTE (DUAS VARIAVEIS)")
+    print("-" * 70)
+    print("\nExemplo: x**2 + x*y + y**2")
+
+    expr = input("\nDigite a expressao (use 'x' e 'y'): ").strip()
+    x_raw = input("Digite o ponto x0 (ex: 1, pi): ").strip()
+    y_raw = input("Digite o ponto y0 (ex: 2, e): ").strip()
+
+    x_val = _ler_valor_real(x_raw)
+    y_val = _ler_valor_real(y_raw)
+    if x_val is None or y_val is None:
+        print(f"{Cores.FAIL}Erro: digite valores reais validos para o ponto.{Cores.ENDC}")
+        return
+
+    valida, erro = EngineCalculo.validar_expressao(expr)
+    if not valida:
+        print(f"{Cores.FAIL}Erro: expressao invalida: {erro}{Cores.ENDC}")
+        return
+
+    resultado = DerivadaParcial.calcular_plano_tangente(expr, {"x": x_raw, "y": y_raw})
+    if not resultado:
+        print(f"{Cores.FAIL}Erro ao calcular plano tangente.{Cores.ENDC}")
+        return
+
+    print(f"\n{Cores.OKGREEN}Resultado:{Cores.ENDC}")
+    print(f"  Funcao: f(x,y) = {resultado['funcao']}")
+    print(f"  Ponto: ({resultado['ponto_x']}, {resultado['ponto_y']}, {resultado['valor_ponto']})")
+    print(f"  df/dx no ponto = {resultado['df_dx_ponto']}")
+    print(f"  df/dy no ponto = {resultado['df_dy_ponto']}")
+    print(f"  Plano tangente: z = {resultado['equacao']}")
+
+    plotar = input(
+        f"\n{Cores.OKCYAN}Como exibir o grafico 3D? (v)er / (s)alvar / (a)uto [padrao v]: {Cores.ENDC}"
+    ).strip().lower()
+    if plotar in ('v', ''):
+        salvar = False
+    elif plotar == 's':
+        salvar = True
+    else:
+        salvar = None
+
+    intervalo = _obter_intervalo()
+    try:
+        res = GraficoDerivadaParcial.plotar_plano_tangente_2var(
+            expr,
+            (x_val, y_val),
+            intervalo=intervalo,
+            salvar=salvar,
+        )
+        if isinstance(res, str):
+            print(f"{Cores.OKGREEN}Grafico salvo em: {res}{Cores.ENDC}")
+    except Exception as e:
+        print(f"{Cores.FAIL}Erro ao gerar grafico: {e}{Cores.ENDC}")
+
+
+def menu_derivadas_com_tangentes():
+    """Menu interativo com opcoes de reta e plano tangente."""
+    while True:
+        print("\n" + "=" * 70)
+        print("                          DERIVADAS")
+        print("=" * 70)
+        print(f"\n{Cores.BOLD}Funcoes de Uma Variavel:{Cores.ENDC}")
+        print("  1. Derivada Simples (1a Ordem)")
+        print("  2. Derivada de Ordem Superior")
+        print("  3. Valor da Derivada em um Ponto")
+        print("  4. Reta Tangente (uma variavel)")
+        print("  5. Maximos e Minimos (uma variavel)")
+
+        print(f"\n{Cores.BOLD}Funcoes de Multiplas Variaveis:{Cores.ENDC}")
+        print("  6. Derivadas Parciais")
+        print("  7. Gradiente")
+        print("  8. Plano Tangente (duas variaveis)")
+        print("  9. Derivada Direcional")
+        print("  10. Extremos em 2 Variaveis (Maximos/Minimos/Sela)")
+
+        print(f"\n  {Cores.OKBLUE}0{Cores.ENDC}. Voltar ao Menu Anterior\n")
+
+        escolha = input("Escolha uma opcao: ").strip()
+
+        if escolha == '0':
+            break
+        elif escolha == '1':
+            _calcular_derivada_simples()
+        elif escolha == '2':
+            _calcular_derivada_ordem_superior()
+        elif escolha == '3':
+            _calcular_derivada_ponto()
+        elif escolha == '4':
+            _calcular_reta_tangente()
+        elif escolha == '5':
+            _extremos_1var()
+        elif escolha == '6':
+            _derivadas_parciais()
+        elif escolha == '7':
+            _calcular_gradiente()
+        elif escolha == '8':
+            _calcular_plano_tangente()
+        elif escolha == '9':
+            _derivada_direcional()
+        elif escolha == '10':
+            _extremos_2var()
+        else:
+            print(f"{Cores.FAIL}Erro: opcao invalida!{Cores.ENDC}")
+
+
+menu_derivadas = menu_derivadas_com_tangentes
