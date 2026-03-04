@@ -27,6 +27,7 @@ def menu_algebra_linear():
         print("=" * 70)
         print("\n1. Operacoes Basicas de Matrizes")
         print("2. Sistemas Lineares por Gauss-Jordan")
+        print("3. Determinante de matriz (n x n)")
         print("0. Voltar ao menu anterior\n")
 
         escolha = input("Escolha uma opcao: ").strip()
@@ -37,6 +38,8 @@ def menu_algebra_linear():
             _menu_operacoes_matrizes()
         elif escolha == "2":
             _resolver_sistema_gauss_jordan()
+        elif escolha == "3":
+            _operacao_determinante()
         else:
             print(f"{Cores.FAIL}Opcao invalida!{Cores.ENDC}")
 
@@ -51,7 +54,7 @@ def _menu_operacoes_matrizes():
         print("2. Subtracao de matrizes")
         print("3. Multiplicacao de matrizes")
         print("4. Transposta")
-        print("5. Determinante")
+        print("5. Determinante (n x n)")
         print("6. Inversa")
         print("0. Voltar\n")
 
@@ -155,8 +158,8 @@ def _operacao_transposta():
 
 
 def _operacao_determinante():
-    print("\nDETERMINANTE")
-    ordem = _ler_inteiro_positivo("Ordem da matriz quadrada: ")
+    print("\nDETERMINANTE DE MATRIZ (n x n)")
+    ordem = _ler_inteiro_positivo("Informe a ordem n da matriz quadrada: ")
     if ordem is None:
         return
 
