@@ -1,0 +1,54 @@
+================================================================================
+INTEGRAIS MODULE TEST SUITE - SMITHER PROJECT
+================================================================================
+
+[Test 1] Indefinite Integral
+  [PASS] integral(x, x) = x**2/2
+  [PASS] integral(x**2, x) = x**3/3
+  [PASS] integral(sin(x), x) = -cos(x)
+  [PASS] integral(exp(x), x) = exp(x)
+
+[Test 2] Definite Integral
+  [PASS] integral(x, x, 0, 1) = 0.500000
+  [PASS] integral(x**2, x, 0, 1) = 0.333333
+  [PASS] integral(1, x, 0, 2) = 2.000000
+  [PASS] integral(x, x, 0, 2) = 2.000000
+  [PASS] integral(sin(x), x, 0, pi) = 2.000000
+
+[Test 3] Double Integral
+  [PASS] double_integral(1, x:0-1, y:0-1) = 1.000000
+  [PASS] double_integral(x, x:0-1, y:0-1) = 0.500000
+  [PASS] double_integral(y, x:0-1, y:0-1) = 0.500000
+  [PASS] double_integral(x*y, x:0-1, y:0-1) = 0.250000
+
+[Test 3.1] Indefinite Double Integral
+  [PASS] indefinite double integral returned: x**2*y**2/4
+
+[Test 4] Triple Integral - SKIPPED (feature removed)
+
+[Test 5] Area Integral Plot
+  [PASS] plotar_area_integral(x) generated successfully
+  [PASS] plotar_area_integral(x**2) generated successfully
+  [PASS] plotar_area_integral(sin(x)) generated successfully
+
+[Test 6] Double Integral (Volume) Plot
+  [PASS] plotar_integral_dupla_volume(x) generated successfully
+  [PASS] plotar_integral_dupla_volume(x*y) generated successfully
+  [PASS] plotar_integral_dupla_volume(sin(x)*cos(y)) generated successfully
+
+[Test 7] Menu Integrais Structure
+  [PASS] menu_integrais function imported successfully
+  [PASS] menu_integrais is callable
+  [PASS] menu_integrais lists both dupla definida and indefinida
+
+[Test 8] Package Exports
+  [PASS] Integral classes exported from calculo package
+  [PASS] menu function exported from calculo package
+
+[Test 9] Menu Calculo Structure
+  [PASS] menu_calculo function exists and is callable
+
+================================================================================
+TEST SUMMARY: 25/25 tests passed
+Status: ALL TESTS PASSED!
+================================================================================

@@ -1,0 +1,61 @@
+======================================================================
+TESTES PESADOS - MODULO DE DERIVADAS
+======================================================================
+
+
+[SECAO 1] Derivadas Simples (1 variavel)
+----------------------------------------------------------------------
+[OK] Derivada de x^2
+[OK] Derivada de x^3 + 2x
+[OK] Derivada de sin(x)
+
+[SECAO 2] Derivadas de Ordem Superior
+----------------------------------------------------------------------
+[OK] Derivada 2a de x^3
+[OK] Derivada 3a de x^4
+
+[SECAO 3] Valores de Derivadas em Pontos
+----------------------------------------------------------------------
+[OK] Derivada de x^2 em x=3 (esperado 6)
+[OK] Derivada de x^3 em x=2 (esperado 12)
+[OK] Menu: derivada em pi não acusa erro
+
+[SECAO 4] Extremos em 1 Variavel
+----------------------------------------------------------------------
+[OK] Encontrar pontos criticos de x^3 - 3x
+[OK] Classificar extremos (max/min)
+
+[SECAO 5] Derivadas Parciais (2 variaveis)
+----------------------------------------------------------------------
+[OK] Derivada parcial de x^2+y^2 em relacao a x
+[OK] Derivada parcial de x^2+y^2 em relacao a y
+[OK] Derivada parcial mista (d2/dxdy)
+
+[SECAO 6] Gradiente
+----------------------------------------------------------------------
+[OK] Gradiente de x^2 + y^2
+[OK] Gradiente em ponto (1,1) de x^2+y^2
+
+[SECAO 7] Derivada Direcional
+----------------------------------------------------------------------
+[OK] Derivada direcional em (1,1) na direcao x
+
+[SECAO 8] Extremos em 2 Variaveis
+----------------------------------------------------------------------
+[OK] Encontrar pontos criticos em 2var
+[OK] Teste de Hessiana para classificacao
+
+[SECAO 9] Geracao de Graficos (Headless)
+----------------------------------------------------------------------
+[OK] Gerar grafico de funcao (1var)
+[OK] Gerar grafico funcao+derivada
+[OK] Gerar grafico 2var (contorno)
+[OK] Gerar grafico com extremos marcados
+[OK] Gerar grafico com vetor gradiente
+[OK] Gerar gráfico de derivadas parciais
+
+======================================================================
+RESUMO: 24/24 testes passaram (100.0%)
+======================================================================
+
+[OK] TODOS OS TESTES PASSARAM!
