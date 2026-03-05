@@ -7,7 +7,8 @@ Utiliza SymPy para cálculo simbólico.
 
 import sympy as sp
 from sympy import symbols, diff, integrate, limit, oo
-from typing import Union, Tuple, Optional
+from itertools import permutations
+from typing import Dict, List, Optional, Tuple, Union
 
 
 class EngineCalculo:
@@ -199,30 +200,202 @@ class Integral:
 
 
 class Limite:
-    """Classe para operações com limites."""
+    """Classe para operações com limites, incluindo análises multivariadas e assíntotas."""
+    
+    @staticmethod
+    def _normalizar_ponto(ponto: Union[float, str, sp.Expr]):
+        """Converte entrada do usuário para objeto SymPy adequado."""
+        if isinstance(ponto, str):
+            valor = ponto.strip()
+            valor_lower = valor.lower()
+            if valor_lower in {'oo', 'inf', '+oo', '+inf'}:
+                return sp.oo
+            if valor_lower in {'-oo', '-inf'}:
+                return -sp.oo
+            try:
+                return sp.nsimplify(valor)
+            except Exception:
+                return EngineCalculo._parse(valor)
+        try:
+            if ponto in (oo, -oo, sp.oo, -sp.oo):
+                return ponto
+        except Exception:
+            pass
+        try:
+            return sp.nsimplify(ponto)
+        except Exception:
+            return EngineCalculo._parse(str(ponto))
+
+    @staticmethod
+    def _avaliar_caminhos(expr, simbolos, pontos) -> List[dict]:
+        """Avalia limites ao longo de alguns caminhos padrão (apenas para 2 variáveis)."""
+        if len(simbolos) != 2:
+            return []
+        if any(val in (sp.oo, -sp.oo) for val in pontos):
+            return []
+        x_sym, y_sym = simbolos
+        a, b = pontos
+        t = sp.symbols('t')
+        caminhos = [
+            {x_sym: a + t, y_sym: b + t},
+            {x_sym: a + t, y_sym: b - t},
+            {x_sym: a + t, y_sym: b + 2*t},
+            {x_sym: a, y_sym: b + t},
+            {x_sym: a + t, y_sym: b},
+        ]
+        resultados = []
+        for substituicoes in caminhos:
+            try:
+                desc = f"x = {sp.simplify(substituicoes[x_sym])}, y = {sp.simplify(substituicoes[y_sym])}"
+                caminho_expr = expr.subs(substituicoes)
+                valor = sp.limit(caminho_expr, t, 0)
+                valor_simpl = sp.simplify(valor)
+                resultados.append({
+                    'descricao': desc,
+                    'valor': str(valor_simpl),
+                    'valor_obj': valor_simpl
+                })
+            except Exception:
+                continue
+        return resultados
     
     @staticmethod
     def calcular(expressao_str: str, variavel: str, ponto: Union[float, str]) -> Optional[Tuple[str, str]]:
         """
-        Calcula o limite de uma expressão.
-        
-        Args:
-            expressao_str: Expressão em string
-            variavel: Variável
-            ponto: Ponto onde calcular limite (número ou 'oo' para infinito)
-        
-        Returns:
-            (expressão original, limite)
+        Calcula o limite de uma expressão de uma variável.
         """
         try:
             x = sp.symbols(variavel)
             expr = EngineCalculo._parse(expressao_str)
-            
-            # Converte 'oo' para infinito SymPy
-            ponto_calcular = oo if ponto == 'oo' or ponto == 'inf' else float(ponto)
-            
+            ponto_calcular = Limite._normalizar_ponto(ponto)
             resultado = limit(expr, x, ponto_calcular)
-            return (str(expr), str(resultado))
+            return (str(expr), str(sp.simplify(resultado)))
+        except Exception:
+            return None
+    
+    @staticmethod
+    def calcular_multivariavel(expressao_str: str, variaveis: List[str],
+                               pontos: List[Union[float, str]]) -> Optional[Dict]:
+        """
+        Calcula limite para funções com múltiplas variáveis (foco em 2 variáveis).
+        
+        Retorna detalhes por ordem de aproximação e trajetórias testadas.
+        """
+        if not variaveis or len(variaveis) != len(pontos):
+            return None
+        try:
+            expr = EngineCalculo._parse(expressao_str)
+            simbolos = [sp.symbols(var) for var in variaveis]
+            pontos_norm = [Limite._normalizar_ponto(p) for p in pontos]
+            
+            resultados_ordem = []
+            valores_brutos = []
+            for ordem in permutations(range(len(variaveis))):
+                parcial = expr
+                try:
+                    for idx in ordem:
+                        parcial = limit(parcial, simbolos[idx], pontos_norm[idx])
+                    parcial = sp.simplify(parcial)
+                    resultados_ordem.append({
+                        'ordem': [variaveis[i] for i in ordem],
+                        'valor': str(parcial)
+                    })
+                    valores_brutos.append(parcial)
+                except Exception:
+                    continue
+            
+            if not resultados_ordem:
+                return None
+            
+            caminhos_brutos = Limite._avaliar_caminhos(expr, simbolos, pontos_norm)
+            caminhos = [{'descricao': c['descricao'], 'valor': c['valor']} for c in caminhos_brutos]
+            valores_caminhos = [c['valor_obj'] for c in caminhos_brutos if c.get('valor_obj') is not None]
+            
+            valores_norm = [str(sp.simplify(v)) for v in valores_brutos]
+            consist = False
+            valor_final = None
+            if valores_norm:
+                referencia = valores_norm[0]
+                consist = all(v == referencia for v in valores_norm)
+                if consist and valores_caminhos:
+                    caminhos_norm = [str(sp.simplify(v)) for v in valores_caminhos]
+                    consist = all(v == referencia for v in caminhos_norm)
+                if consist:
+                    valor_final = referencia
+            
+            return {
+                'expressao': str(expr),
+                'resultados_ordem': resultados_ordem,
+                'caminhos': caminhos,
+                'consistente': consist,
+                'valor': valor_final
+            }
+        except Exception:
+            return None
+    
+    @staticmethod
+    def encontrar_assintotas(expressao_str: str, variavel: str) -> Optional[Dict[str, List[str]]]:
+        """
+        Procura assíntotas verticais, horizontais e oblíquas de uma função de 1 variável.
+        """
+        try:
+            x = sp.symbols(variavel)
+            expr = EngineCalculo._parse(expressao_str)
+            expr_simpl = sp.simplify(expr)
+            expr_frac = sp.together(expr_simpl)
+            numerador, denominador = sp.fraction(expr_frac)
+            
+            verticais = []
+            if denominador != 1:
+                try:
+                    possiveis = sp.solve(sp.Eq(denominador, 0), x)
+                except Exception:
+                    possiveis = []
+                if not isinstance(possiveis, (list, tuple)):
+                    possiveis = [possiveis]
+                vistos = set()
+                for raiz in possiveis:
+                    raiz_simpl = sp.simplify(raiz)
+                    if getattr(raiz_simpl, 'is_real', False) is False:
+                        continue
+                    if numerador.subs(x, raiz_simpl) == 0:
+                        # Ponto removível, não é assíntota vertical
+                        continue
+                    chave = str(raiz_simpl)
+                    if chave in vistos:
+                        continue
+                    vistos.add(chave)
+                    verticais.append(f"x = {chave}")
+            
+            horizontais = []
+            for direcao, destino in (('+∞', sp.oo), ('-∞', -sp.oo)):
+                try:
+                    limite_dir = limit(expr_simpl, x, destino)
+                    if limite_dir in (sp.oo, -sp.oo, sp.zoo) or limite_dir is sp.nan:
+                        continue
+                    horizontais.append(f"y = {sp.simplify(limite_dir)} (x→{direcao})")
+                except Exception:
+                    continue
+            
+            obliquas = []
+            for direcao, destino in (('+∞', sp.oo), ('-∞', -sp.oo)):
+                try:
+                    m = limit(expr_simpl / x, x, destino)
+                    if m in (sp.oo, -sp.oo, sp.zoo, 0) or m is sp.nan:
+                        continue
+                    b = limit(expr_simpl - m * x, x, destino)
+                    if b in (sp.oo, -sp.oo, sp.zoo) or b is sp.nan:
+                        continue
+                    obliquas.append(f"y = {sp.simplify(m)}*x + {sp.simplify(b)} (x→{direcao})")
+                except Exception:
+                    continue
+            
+            return {
+                'expressao': str(expr_simpl),
+                'verticais': verticais,
+                'horizontais': horizontais,
+                'obliquas': obliquas
+            }
         except Exception:
             return None
 
