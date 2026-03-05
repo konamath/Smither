@@ -7,6 +7,8 @@ import re
 from dataclasses import dataclass
 from math import comb
 from textwrap import dedent
+from datetime import datetime
+from pathlib import Path
 import math
 
 import numpy as np
@@ -14,6 +16,8 @@ import pandas as pd
 import scipy
 from scipy import stats
 import sympy as sp
+import matplotlib
+import matplotlib.pyplot as plt
 
 try:  # OpenAI é opcional durante o desenvolvimento/local sem credenciais.
     from openai import OpenAI  # type: ignore
@@ -895,6 +899,290 @@ def _verificar_funcao_pdf():
         print(f"{Cores.WARNING}Conclusão: a função NÃO atende totalmente aos critérios de fdp. Revise os requisitos acima.{Cores.ENDC}")
 
 
+def _coletar_dados_tabela() -> list[float]:
+    """Coleta dados numéricos livres digitados pelo usuário."""
+
+    print("\nDigite os valores (use vírgula ou espaço como separador).")
+    print("Pressione ENTER em branco para finalizar a entrada.")
+    valores: list[float] = []
+
+    while True:
+        linha = input("  Linha de dados: ").strip()
+        if not linha:
+            break
+
+        for pedaco in re.split(r"[;,\s]+", linha):
+            texto = pedaco.strip()
+            if not texto:
+                continue
+            try:
+                valores.append(_converter_float(texto))
+            except ValueError:
+                print(f"{Cores.WARNING}Valor ignorado (não numérico): '{texto}'{Cores.ENDC}")
+
+    return valores
+
+
+def _interpretar_skewness(valor: float) -> str:
+    """Classifica a assimetria com base na skewness."""
+
+    if math.isnan(valor):
+        return "Indefinida (todos os valores são iguais)."
+    if valor > 0.5:
+        return "Assimetria positiva (cauda à direita)."
+    if valor < -0.5:
+        return "Assimetria negativa (cauda à esquerda)."
+    return "Distribuição aproximadamente simétrica."
+
+
+def _interpretar_kurtosis(valor: float) -> str:
+    """Classifica a curtose com base no excesso de Fisher."""
+
+    if math.isnan(valor):
+        return "Indefinida (todos os valores são iguais)."
+    if valor > 0.5:
+        return "Leptocúrtica (caudas pesadas/afunilada)."
+    if valor < -0.5:
+        return "Platicúrtica (achatada)."
+    return "Mesocúrtica (similar à Normal)."
+
+
+def _formatar_valor_metrica(valor) -> str:
+    """Converte métricas em strings amigáveis."""
+
+    if isinstance(valor, (list, tuple, np.ndarray, pd.Series)):
+        return ", ".join(_formatar_valor_metrica(v) for v in valor)
+    if isinstance(valor, (int, np.integer)):
+        return str(int(valor))
+    if isinstance(valor, (float, np.floating)):
+        if math.isnan(float(valor)):
+            return "—"
+        return f"{float(valor):.6g}"
+    return str(valor)
+
+
+def _gerar_resumo_metricas(serie: pd.Series) -> list[tuple[str, str]]:
+    """Retorna uma lista com métricas resumidas formatadas."""
+
+    desc = serie.describe()
+    amplitude = float(serie.max() - serie.min())
+    variancia = float(serie.var(ddof=1)) if len(serie) > 1 else float("nan")
+    desvio = float(serie.std(ddof=1)) if len(serie) > 1 else float("nan")
+    coef_var = (
+        (desvio / float(desc["mean"])) * 100
+        if len(serie) > 1 and not math.isclose(float(desc["mean"]), 0.0)
+        else float("nan")
+    )
+    moda = serie.mode().tolist()
+    skew = float(serie.skew()) if len(serie) > 2 else float("nan")
+    kurt = float(serie.kurtosis()) if len(serie) > 3 else float("nan")
+    q1 = float(serie.quantile(0.25))
+    q3 = float(serie.quantile(0.75))
+    iqr = q3 - q1
+
+    metricas = [
+        ("Quantidade de observações", int(desc["count"])),
+        ("Valores únicos", int(serie.nunique())),
+        ("Mínimo", float(desc["min"])),
+        ("Q1 (25%)", q1),
+        ("Mediana (50%)", float(desc["50%"])),
+        ("Q3 (75%)", q3),
+        ("Máximo", float(desc["max"])),
+        ("Amplitude", amplitude),
+        ("Média", float(desc["mean"])),
+        ("Moda", moda or ["—"]),
+        ("Variância amostral", variancia),
+        ("Desvio padrão amostral", desvio),
+        ("Coeficiente de variação (%)", coef_var),
+        ("Assimetria (skewness)", skew),
+        ("Classificação da assimetria", _interpretar_skewness(skew)),
+        ("Curtose (excesso de Fisher)", kurt),
+        ("Classificação da curtose", _interpretar_kurtosis(kurt)),
+        ("Intervalo interquartílico (IQR)", iqr),
+        ("Soma", float(serie.sum())),
+    ]
+
+    return [(nome, _formatar_valor_metrica(valor)) for nome, valor in metricas]
+
+
+def _gerar_tabela_frequencias(serie: pd.Series, discreto: bool) -> pd.DataFrame:
+    """Gera tabela de frequências (discreta ou contínua)."""
+
+    n = len(serie)
+    if discreto:
+        freq_abs = serie.value_counts().sort_index()
+        df = freq_abs.to_frame(name="Frequência")
+        df["Frequência Relativa (%)"] = (df["Frequência"] / n * 100).round(2)
+        df["Freq. Acumulada (%)"] = df["Frequência Relativa (%)"].cumsum().round(2)
+        df.index.name = "Valor"
+        return df.reset_index()
+
+    bins = max(5, min(15, int(np.ceil(np.log2(n) + 1))))
+    minimo = float(serie.min())
+    maximo = float(serie.max())
+    if math.isclose(minimo, maximo):
+        largura = max(abs(minimo) * 0.1, 1.0)
+        edges = np.array([minimo - largura / 2, maximo + largura / 2])
+    else:
+        edges = np.histogram_bin_edges(serie, bins=bins)
+
+    contagens, edges = np.histogram(serie, bins=edges)
+    linhas: list[dict[str, object]] = []
+    acumulada = 0.0
+    for idx, freq in enumerate(contagens):
+        if freq == 0:
+            continue
+        limite_inf = edges[idx]
+        limite_sup = edges[idx + 1]
+        largura = limite_sup - limite_inf
+        freq_rel = (freq / n) * 100
+        acumulada += freq_rel
+        densidade = freq / (n * largura) if largura > 0 else float("nan")
+        classe = f"[{limite_inf:.6g}, {limite_sup:.6g}" + ("]" if idx == len(contagens) - 1 else ")")
+        linhas.append(
+            {
+                "Classe": classe,
+                "Frequência": freq,
+                "Frequência Relativa (%)": round(freq_rel, 2),
+                "Freq. Acumulada (%)": round(acumulada, 2),
+                "Densidade": round(densidade, 4) if not math.isnan(densidade) else "—",
+            }
+        )
+
+    return pd.DataFrame(linhas)
+
+
+def _ensure_output_dir_estatistica() -> Path:
+    out = Path.cwd() / "outputs"
+    out.mkdir(parents=True, exist_ok=True)
+    return out
+
+
+def _should_save_plots_estatistica() -> bool:
+    """Replica a lógica de detecção headless usada nos demais módulos."""
+
+    try:
+        backend = matplotlib.get_backend().lower()
+        if "agg" in backend:
+            return True
+    except Exception:  # pragma: no cover
+        pass
+
+    if os.environ.get("HEADLESS") or os.environ.get("CI"):
+        return True
+    if os.name != "nt" and not os.environ.get("DISPLAY"):
+        return True
+    return False
+
+
+def _finalizar_figura_estatistica(fig, nome_base: str, salvar: bool | None):
+    """Salva ou mostra figura conforme configuração."""
+
+    do_save = _should_save_plots_estatistica() if salvar is None else bool(salvar)
+    fig.tight_layout()
+    if do_save:
+        destino = _ensure_output_dir_estatistica() / f"{nome_base}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
+        fig.savefig(destino, dpi=150, bbox_inches="tight")
+        plt.close(fig)
+        print(f"{Cores.OKGREEN}Gráfico salvo em: {destino}{Cores.ENDC}")
+    else:
+        plt.show()
+
+
+def _gerar_graficos_tabela(serie: pd.Series, discreto: bool, salvar: bool | None):
+    """Cria gráficos de distribuição, boxplot e ECDF."""
+
+    if discreto:
+        freq = serie.value_counts().sort_index()
+        fig, ax = plt.subplots(figsize=(9, 5))
+        ax.bar(freq.index.astype(str), freq.values, color="#4C72B0", alpha=0.85)
+        ax.set_title("Distribuição Discreta (Frequências)")
+        ax.set_xlabel("Valor")
+        ax.set_ylabel("Frequência absoluta")
+        ax.grid(axis="y", alpha=0.2)
+        _finalizar_figura_estatistica(fig, "distribuicao_discreta", salvar)
+    else:
+        fig, ax = plt.subplots(figsize=(9, 5))
+        ax.hist(serie, bins="auto", color="#55A868", alpha=0.7, edgecolor="black", density=True)
+        if serie.nunique() > 1:
+            try:
+                kde = stats.gaussian_kde(serie)
+                xs = np.linspace(float(serie.min()), float(serie.max()), 200)
+                ax.plot(xs, kde(xs), color="#C44E52", linewidth=2, label="KDE")
+                ax.legend()
+            except Exception:  # pragma: no cover - pode falhar com dados degenerados
+                pass
+        ax.set_title("Distribuição Contínua (Histograma + KDE)")
+        ax.set_xlabel("Valor")
+        ax.set_ylabel("Densidade")
+        ax.grid(alpha=0.2)
+        _finalizar_figura_estatistica(fig, "distribuicao_continua", salvar)
+
+    fig_box, ax_box = plt.subplots(figsize=(9, 2.8))
+    ax_box.boxplot(serie, vert=False, patch_artist=True, boxprops=dict(facecolor="#9C9EFE", alpha=0.6))
+    ax_box.set_title("Boxplot / Quartis")
+    ax_box.set_xlabel("Valores")
+    ax_box.grid(axis="x", alpha=0.2)
+    _finalizar_figura_estatistica(fig_box, "boxplot_dados", salvar)
+
+    valores_ordenados = np.sort(serie)
+    probs = np.arange(1, len(valores_ordenados) + 1) / len(valores_ordenados)
+    fig_ecdf, ax_ecdf = plt.subplots(figsize=(9, 4))
+    ax_ecdf.step(valores_ordenados, probs, where="post", color="#DD8452")
+    ax_ecdf.set_ylim(0, 1.05)
+    ax_ecdf.set_title("Função Distribuição Empírica (ECDF)")
+    ax_ecdf.set_xlabel("Valor")
+    ax_ecdf.set_ylabel("Probabilidade acumulada")
+    ax_ecdf.grid(alpha=0.3)
+    _finalizar_figura_estatistica(fig_ecdf, "ecdf_dados", salvar)
+
+
+def _analise_tabela_dados():
+    """Fluxo principal da nova opção Tabela em Estatística."""
+
+    print("\n" + "-" * 70)
+    print("ANÁLISE ESTATÍSTICA DE TABELA / SÉRIE DE DADOS")
+    print("-" * 70)
+
+    tipo = input("Os dados são (d)iscretos ou (c)ontínuos? [c]: ").strip().lower()
+    discreto = tipo.startswith("d")
+
+    dados = _coletar_dados_tabela()
+    if len(dados) < 2:
+        print(f"{Cores.FAIL}São necessários ao menos 2 valores numéricos para a análise.{Cores.ENDC}")
+        return
+
+    serie = pd.Series(dados, dtype=float)
+    print(f"\n{Cores.BOLD}Resumo Estatístico ({'Discreto' if discreto else 'Contínuo'}):{Cores.ENDC}\n")
+
+    metricas = _gerar_resumo_metricas(serie)
+    df_metricas = pd.DataFrame(metricas, columns=["Métrica", "Valor"])
+    print(df_metricas.to_string(index=False))
+
+    freq_df = _gerar_tabela_frequencias(serie, discreto)
+    if not freq_df.empty:
+        print(f"\n{Cores.BOLD}Tabela de Frequências:{Cores.ENDC}\n")
+        print(freq_df.to_string(index=False))
+
+    skew_val = float(serie.skew()) if serie.nunique() > 1 else float("nan")
+    kurt_val = float(serie.kurtosis()) if serie.nunique() > 1 else float("nan")
+    print(f"\nAssimetria: {_formatar_valor_metrica(skew_val)} -> {_interpretar_skewness(skew_val)}")
+    print(f"Curtose: {_formatar_valor_metrica(kurt_val)} -> {_interpretar_kurtosis(kurt_val)}")
+
+    plotar = input(f"\n{Cores.OKCYAN}Como exibir os gráficos? (v)er / (s)alvar / (a)uto [padrão v]: {Cores.ENDC}").strip().lower()
+    if plotar in ("", "v"):
+        salvar = False
+    elif plotar == "s":
+        salvar = True
+    else:
+        salvar = None
+
+    try:
+        _gerar_graficos_tabela(serie, discreto, salvar)
+    except Exception as exc:  # pylint: disable=broad-except
+        print(f"{Cores.WARNING}Não foi possível gerar os gráficos: {exc}{Cores.ENDC}")
+
+
 def menu_estatistica():
     """Menu principal de estatística (fase inicial focada em inferência)."""
 
@@ -906,6 +1194,7 @@ def menu_estatistica():
         print("    1. Pergunte ao Smither (qual distribuição usar?)")
         print("    2. Distribuições (discretas e contínuas)")
         print("    3. Verificar função fdp")
+        print("    4. Análise de tabela/dados amostrais")
         print(f"\n  {Cores.OKBLUE}0{Cores.ENDC}. Voltar ao Menu Anterior\n")
 
         escolha = input("Escolha uma opção: ").strip()
@@ -920,6 +1209,9 @@ def menu_estatistica():
             continue
         if escolha == '3':
             _verificar_funcao_pdf()
+            continue
+        if escolha == '4':
+            _analise_tabela_dados()
             continue
 
         print(f"{Cores.FAIL}[Erro] Opção inválida!{Cores.ENDC}")
