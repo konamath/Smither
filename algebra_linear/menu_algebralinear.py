@@ -4,9 +4,6 @@ Modulo de Algebra Linear - Smither
 Operacoes basicas com matrizes e resolucao de sistemas lineares.
 """
 
-import os
-from datetime import datetime
-from pathlib import Path
 from fractions import Fraction
 
 
@@ -492,7 +489,6 @@ def _exibir_resultado_matriz(titulo: str, matriz):
     """Exibe uma matriz resultado."""
     print(f"\n{Cores.OKGREEN}Resultado ({titulo}):{Cores.ENDC}")
     print(_formatar_matriz(matriz))
-    _plotar_vetores_matriz(matriz, titulo)
 
 
 def _formatar_matriz(matriz) -> str:
@@ -508,176 +504,6 @@ def _formatar_matriz(matriz) -> str:
         conteudo = "  ".join(item.rjust(largura) for item in linha)
         saida.append(f"[ {conteudo} ]")
     return "\n".join(saida)
-
-
-def _plotar_vetores_matriz(matriz, titulo: str):
-    """Gera uma representacao grafica dos vetores-linha do resultado."""
-    if not matriz or not matriz[0]:
-        return
-
-    colunas = len(matriz[0])
-    if any(len(linha) != colunas for linha in matriz):
-        print(f"{Cores.WARNING}Nao foi possivel gerar o grafico: matriz irregular.{Cores.ENDC}")
-        return
-
-    if colunas == 1:
-        vetores_plot = [[_converter_para_float(linha[0]), 0.0] for linha in matriz]
-        vetores_legenda = [[_converter_para_float(linha[0])] for linha in matriz]
-        dimensao = 2
-        print(f"{Cores.OKBLUE}Plotando vetores 1D no plano (eixo y = 0).{Cores.ENDC}")
-    elif colunas in (2, 3):
-        vetores_plot = [[_converter_para_float(valor) for valor in linha] for linha in matriz]
-        vetores_legenda = [vetor[:] for vetor in vetores_plot]
-        dimensao = colunas
-    else:
-        print(f"{Cores.WARNING}Grafico vetorial disponivel apenas para resultados com ate 3 colunas.{Cores.ENDC}")
-        return
-
-    try:
-        import matplotlib.pyplot as plt
-        if dimensao == 3:
-            from mpl_toolkits.mplot3d import Axes3D  # noqa: F401
-    except Exception as exc:
-        print(f"{Cores.WARNING}Nao foi possivel carregar o matplotlib: {exc}{Cores.ENDC}")
-        return
-
-    cmap = plt.cm.get_cmap('tab10', max(3, len(vetores_plot)))
-    cores = [cmap(i % cmap.N) for i in range(len(vetores_plot))]
-    limites = _calcular_limites_componentes(vetores_plot, dimensao)
-
-    if dimensao == 2:
-        fig, ax = plt.subplots(figsize=(7, 6))
-        for idx, vetor in enumerate(vetores_plot):
-            cor = cores[idx]
-            ax.quiver(0, 0, vetor[0], vetor[1], angles='xy', scale_units='xy', scale=1, color=cor, width=0.006)
-            ax.scatter([vetor[0]], [vetor[1]], color=cor)
-            rotulo = _formatar_componentes_legenda(vetores_legenda[idx])
-            ax.text(vetor[0], vetor[1], f"v{idx + 1} ({rotulo})", fontsize=9, color=cor)
-
-        ax.axhline(0, color='gray', linewidth=0.6)
-        ax.axvline(0, color='gray', linewidth=0.6)
-        ax.set_xlim(*limites[0])
-        ax.set_ylim(*limites[1])
-        ax.set_xlabel('x')
-        ax.set_ylabel('y')
-        ax.grid(True, linestyle='--', alpha=0.4)
-        ax.set_title(f"Representacao Vetorial de {titulo}")
-        try:
-            ax.set_aspect('equal', adjustable='box')
-        except Exception:
-            pass
-    else:
-        fig = plt.figure(figsize=(8, 6))
-        ax = fig.add_subplot(111, projection='3d')
-        for idx, vetor in enumerate(vetores_plot):
-            cor = cores[idx]
-            ax.quiver(0, 0, 0, vetor[0], vetor[1], vetor[2], color=cor, arrow_length_ratio=0.1, linewidth=2)
-            rotulo = _formatar_componentes_legenda(vetores_legenda[idx])
-            ax.text(vetor[0], vetor[1], vetor[2], f"v{idx + 1}\n({rotulo})", fontsize=8, color=cor)
-
-        ax.set_xlim(*limites[0])
-        ax.set_ylim(*limites[1])
-        ax.set_zlim(*limites[2])
-        ax.set_xlabel('x')
-        ax.set_ylabel('y')
-        ax.set_zlabel('z')
-        ax.set_title(f"Representacao Vetorial de {titulo}")
-        ax.view_init(elev=18, azim=35)
-
-    _renderizar_grafico(fig, titulo, plt)
-
-
-def _converter_para_float(valor):
-    """Converte Fracoes ou decimais em float para plotagem."""
-    try:
-        return float(valor)
-    except Exception:
-        return 0.0
-
-
-def _calcular_limites_componentes(vetores, dimensao: int):
-    """Determina limites dos eixos com uma margem de seguranca."""
-    limites = []
-    for i in range(dimensao):
-        valores = [vetor[i] for vetor in vetores] + [0.0]
-        minimo = min(valores)
-        maximo = max(valores)
-        if minimo == maximo:
-            margem = abs(maximo) * 0.3 if maximo != 0 else 1.0
-        else:
-            margem = max((maximo - minimo) * 0.15, 0.5)
-        limites.append((minimo - margem, maximo + margem))
-    return limites
-
-
-def _formatar_componentes_legenda(componentes):
-    """Formata uma sequencia numerica para ser exibida junto ao vetor."""
-    if not componentes:
-        return "0"
-    return ", ".join(f"{valor:.2f}" for valor in componentes)
-
-
-def _renderizar_grafico(fig, titulo: str, plt_module):
-    """Define se o grafico deve ser exibido ou salvo em arquivo."""
-    do_save = _should_save_plots(plt_module)
-    if do_save:
-        destino = _ensure_output_dir() / f'vetores_{_sanitize_filename(titulo)}_{_timestamp()}.png'
-        fig.savefig(destino, dpi=150, bbox_inches='tight')
-        plt_module.close(fig)
-        print(f"{Cores.OKGREEN}Grafico salvo em: {destino}{Cores.ENDC}")
-    else:
-        plt_module.show()
-        plt_module.close(fig)
-
-
-def _ensure_output_dir() -> Path:
-    """Garante que exista um diretorio padrao para salvar figuras."""
-    destino = Path.cwd() / "outputs"
-    destino.mkdir(parents=True, exist_ok=True)
-    return destino
-
-
-def _timestamp() -> str:
-    """Timestamp simples para compor o nome do arquivo."""
-    return datetime.now().strftime("%Y%m%d_%H%M%S")
-
-
-def _sanitize_filename(texto: str) -> str:
-    """Remove caracteres invalidos dos nomes dos arquivos."""
-    base = texto.strip().replace(" ", "_")
-    san = "".join(char if char.isalnum() or char in ("-", "_") else "_" for char in base)
-    return san or "resultado"
-
-
-def _should_save_plots(plt_module=None) -> bool:
-    """Regras para decidir entre mostrar ou salvar o grafico."""
-    backend = None
-    if plt_module is not None:
-        try:
-            backend = plt_module.get_backend()
-        except Exception:
-            backend = None
-
-    if backend:
-        try:
-            if "agg" in backend.lower():
-                return True
-        except Exception:
-            pass
-    else:
-        try:
-            import matplotlib
-            backend_mat = matplotlib.get_backend()
-            if "agg" in backend_mat.lower():
-                return True
-        except Exception:
-            return True
-
-    if os.environ.get("HEADLESS") or os.environ.get("CI"):
-        return True
-    if os.name != "nt" and not os.environ.get("DISPLAY"):
-        return True
-    return False
 
 
 def _formatar_numero(valor: Fraction) -> str:
