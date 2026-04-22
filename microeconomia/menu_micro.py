@@ -13,12 +13,29 @@ import numpy as np
 import matplotlib
 
 def _sem_sessao_grafica_unix() -> bool:
-    if os.name == "nt" or sys.platform == "darwin":
+    if os.name == "nt":
+        return False
+    if sys.platform == "darwin":
         return False
     return not (os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY"))
 
 
-if os.environ.get("HEADLESS") or os.environ.get("CI") or _sem_sessao_grafica_unix():
+def _terminal_interativo_disponivel() -> bool:
+    try:
+        return bool(sys.stdin.isatty() and sys.stdout.isatty())
+    except Exception:
+        return False
+
+
+def _deve_forcar_backend_agg() -> bool:
+    if os.environ.get("HEADLESS") or os.environ.get("CI"):
+        return True
+    if not _terminal_interativo_disponivel():
+        return True
+    return _sem_sessao_grafica_unix()
+
+
+if _deve_forcar_backend_agg():
     matplotlib.use("Agg")
 
 import matplotlib.pyplot as plt
@@ -531,11 +548,7 @@ def _should_save_plots() -> bool:
     except Exception:
         pass
 
-    if os.environ.get("HEADLESS") or os.environ.get("CI"):
-        return True
-    if _sem_sessao_grafica_unix():
-        return True
-    return False
+    return _deve_forcar_backend_agg()
 
 
 def menu():

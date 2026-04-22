@@ -12,12 +12,40 @@ from datetime import datetime
 from pathlib import Path
 import math
 
+
+def _unix_display_session_available_estatistica() -> bool:
+    return bool(os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY"))
+
+
+def _interactive_terminal_available_estatistica() -> bool:
+    try:
+        return bool(sys.stdin.isatty() and sys.stdout.isatty())
+    except Exception:
+        return False
+
+
+def _should_force_agg_backend_estatistica() -> bool:
+    if os.environ.get("HEADLESS") or os.environ.get("CI"):
+        return True
+    if not _interactive_terminal_available_estatistica():
+        return True
+    if os.name == "nt":
+        return False
+    if sys.platform == "darwin":
+        return False
+    return not _unix_display_session_available_estatistica()
+
+
 import numpy as np
 import pandas as pd
 import scipy
 from scipy import stats
 import sympy as sp
 import matplotlib
+
+if _should_force_agg_backend_estatistica():
+    matplotlib.use("Agg")
+
 import matplotlib.pyplot as plt
 
 try:  # OpenAI é opcional durante o desenvolvimento/local sem credenciais.
@@ -1059,10 +1087,6 @@ def _ensure_output_dir_estatistica() -> Path:
     return out
 
 
-def _unix_display_session_available_estatistica() -> bool:
-    return bool(os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY"))
-
-
 def _should_save_plots_estatistica() -> bool:
     """Replica a lógica de detecção headless usada nos demais módulos."""
 
@@ -1073,11 +1097,7 @@ def _should_save_plots_estatistica() -> bool:
     except Exception:  # pragma: no cover
         pass
 
-    if os.environ.get("HEADLESS") or os.environ.get("CI"):
-        return True
-    if os.name != "nt" and sys.platform != "darwin" and not _unix_display_session_available_estatistica():
-        return True
-    return False
+    return _should_force_agg_backend_estatistica()
 
 
 def _finalizar_figura_estatistica(fig, nome_base: str, salvar: bool | None):

@@ -6,13 +6,43 @@ Funções para visualizar funções, derivadas e análise de extremos.
 
 import os
 import sys
+from datetime import datetime
+from pathlib import Path
+
+
+def _unix_display_session_available() -> bool:
+    return bool(os.environ.get('DISPLAY') or os.environ.get('WAYLAND_DISPLAY'))
+
+
+def _interactive_terminal_available() -> bool:
+    try:
+        return bool(sys.stdin.isatty() and sys.stdout.isatty())
+    except Exception:
+        return False
+
+
+def _should_force_agg_backend() -> bool:
+    if os.environ.get('HEADLESS') or os.environ.get('CI'):
+        return True
+    if not _interactive_terminal_available():
+        return True
+    if os.name == 'nt':
+        return False
+    if sys.platform == 'darwin':
+        return False
+    return not _unix_display_session_available()
+
+
 import numpy as np
 import matplotlib
+
+if _should_force_agg_backend():
+    matplotlib.use('Agg')
+
 import matplotlib.pyplot as plt
 from sympy import lambdify
 import sympy as sp
-from datetime import datetime
-from pathlib import Path
+
 from .engine import EngineCalculo
 
 
@@ -663,10 +693,6 @@ def _sanitize_filename(s: str) -> str:
     return ''.join(c if c.isalnum() or c in ('-', '_') else '_' for c in s)
 
 
-def _unix_display_session_available() -> bool:
-    return bool(os.environ.get('DISPLAY') or os.environ.get('WAYLAND_DISPLAY'))
-
-
 def _should_save_plots() -> bool:
     """Decide se os plots devem ser salvos automaticamente.
 
@@ -683,14 +709,7 @@ def _should_save_plots() -> bool:
     except Exception:
         pass
 
-    if os.environ.get('HEADLESS') or os.environ.get('CI'):
-        return True
-
-    # No macOS o backend nativo não depende de DISPLAY.
-    if os.name != 'nt' and sys.platform != 'darwin' and not _unix_display_session_available():
-        return True
-
-    return False
+    return _should_force_agg_backend()
 
 
 class GraficoIntegral:

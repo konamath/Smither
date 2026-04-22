@@ -49,6 +49,7 @@ Thumbs.db
 .pytest_cache/
 .coverage
 htmlcov/
+.mplconfig_test/
 
 # Environment
 .env
