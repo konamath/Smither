@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import re
+import sys
 from dataclasses import dataclass
 from math import comb
 from textwrap import dedent
@@ -1058,6 +1059,10 @@ def _ensure_output_dir_estatistica() -> Path:
     return out
 
 
+def _unix_display_session_available_estatistica() -> bool:
+    return bool(os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY"))
+
+
 def _should_save_plots_estatistica() -> bool:
     """Replica a lógica de detecção headless usada nos demais módulos."""
 
@@ -1070,7 +1075,7 @@ def _should_save_plots_estatistica() -> bool:
 
     if os.environ.get("HEADLESS") or os.environ.get("CI"):
         return True
-    if os.name != "nt" and not os.environ.get("DISPLAY"):
+    if os.name != "nt" and sys.platform != "darwin" and not _unix_display_session_available_estatistica():
         return True
     return False
 

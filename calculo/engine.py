@@ -724,6 +724,97 @@ class Extremos:
         except Exception:
             return None
 
+    @staticmethod
+    def extremos_condicionais_lagrange(expressao_objetivo_str: str,
+                                       expressao_restricao_str: str,
+                                       tolerancia: float = 1e-8) -> list:
+        """
+        Calcula pontos críticos de maximização/minimização com uma restrição
+        por meio do método de Lagrange.
+
+        Resolve:
+            ∇f(x) = λ ∇g(x)
+            g(x) = 0
+
+        Retorna lista de dicionários com:
+          - ponto: dicionário {var: valor}
+          - valor_funcao: f(ponto) (float)
+          - multipla: valor de λ (float)
+        """
+        try:
+            f = EngineCalculo._parse(expressao_objetivo_str)
+            g = EngineCalculo._parse(expressao_restricao_str)
+
+            variaveis = sorted(
+                {v for v in (f.free_symbols | g.free_symbols) if isinstance(v, sp.Symbol)},
+                key=lambda sym: sym.name,
+            )
+
+            if not variaveis:
+                return []
+
+            lambda_sym = sp.symbols('lambda')
+            sistema = [sp.Eq(sp.diff(f, var) - lambda_sym * sp.diff(g, var), 0)
+                       for var in variaveis]
+            sistema.append(sp.Eq(g, 0))
+
+            solucoes = sp.solve(sistema, variaveis + [lambda_sym], dict=True)
+            if not solucoes:
+                return []
+
+            pontos_validos = []
+            pontos_vistos = set()
+
+            for sol in solucoes:
+                if not isinstance(sol, dict):
+                    continue
+
+                ponto = {}
+                for var in variaveis:
+                    if var not in sol:
+                        ponto = {}
+                        break
+
+                    valor_raw = sol[var]
+                    valor_num = sp.N(valor_raw)
+                    if not getattr(valor_num, 'is_real', False) or not getattr(valor_num, 'is_finite', True):
+                        ponto = {}
+                        break
+
+                    ponto[var] = float(valor_num)
+
+                if not ponto:
+                    continue
+
+                ponto_tuple = tuple(round(v, 12) for v in ponto.values())
+                if ponto_tuple in pontos_vistos:
+                    continue
+
+                substituicoes = {v: ponto[v] for v in variaveis}
+                restricao_val = sp.N(g.subs(substituicoes))
+                if not getattr(restricao_val, 'is_real', False) or abs(float(restricao_val)) > tolerancia:
+                    continue
+
+                valor_funcao = sp.N(f.subs(substituicoes))
+                if not getattr(valor_funcao, 'is_real', False) or not getattr(valor_funcao, 'is_finite', True):
+                    continue
+
+                lambda_raw = sp.N(sol.get(lambda_sym, 0))
+                lambda_val = float(lambda_raw) if getattr(lambda_raw, 'is_real', False) else None
+
+                pontos_vistos.add(ponto_tuple)
+                pontos_validos.append({
+                    'ponto': ponto,
+                    'valor_funcao': float(valor_funcao),
+                    'lambda': lambda_val,
+                    'restricao': float(restricao_val),
+                    'variaveis': variaveis,
+                })
+
+            return pontos_validos
+        except Exception:
+            return []
+
 
 class Integral:
     """Classe para calcular integrais indefinidas."""
@@ -918,5 +1009,3 @@ class IntegralDupla:
         except Exception:
             return None
 
-
-# Triple integrals have been removed per user request.

@@ -38,6 +38,7 @@ def menu_calculo():
         print("(2) Integrais")
         print("(3) Campo Vetorial (Gradiente)")
         print("(4) Limites")
+        print("(5) Máximos e Mínimos Condicionais (Lagrange)")
         print("(0) Voltar ao menu principal")
         
         opcao = input(f"\n{Cores.OKGREEN}Digite sua opcao: {Cores.ENDC}").strip()
@@ -50,6 +51,8 @@ def menu_calculo():
             campo_vetorial.menu_campo_vetorial()
         elif opcao == "4":
             limites.menu_limites()
+        elif opcao == "5":
+            derivadas.menu_extremos_condicionais()
         elif opcao == "0":
             print(f"\n{Cores.WARNING}Voltando ao menu principal...{Cores.ENDC}")
             return

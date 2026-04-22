@@ -5,6 +5,7 @@ Funções para visualizar funções, derivadas e análise de extremos.
 """
 
 import os
+import sys
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
@@ -662,13 +663,17 @@ def _sanitize_filename(s: str) -> str:
     return ''.join(c if c.isalnum() or c in ('-', '_') else '_' for c in s)
 
 
+def _unix_display_session_available() -> bool:
+    return bool(os.environ.get('DISPLAY') or os.environ.get('WAYLAND_DISPLAY'))
+
+
 def _should_save_plots() -> bool:
     """Decide se os plots devem ser salvos automaticamente.
 
     Regras simples:
     - Se a backend do matplotlib for 'agg' (sem display) -> True
     - Se variável de ambiente 'HEADLESS' ou 'CI' estiver setada -> True
-    - Se não houver DISPLAY no Unix -> True
+    - Em Unix não-macOS, se não houver DISPLAY nem WAYLAND_DISPLAY -> True
     Caso contrário, retorna False (mostra com plt.show()).
     """
     try:
@@ -681,8 +686,8 @@ def _should_save_plots() -> bool:
     if os.environ.get('HEADLESS') or os.environ.get('CI'):
         return True
 
-    # No Unix, ausência de DISPLAY normalmente indica headless
-    if os.name != 'nt' and not os.environ.get('DISPLAY'):
+    # No macOS o backend nativo não depende de DISPLAY.
+    if os.name != 'nt' and sys.platform != 'darwin' and not _unix_display_session_available():
         return True
 
     return False

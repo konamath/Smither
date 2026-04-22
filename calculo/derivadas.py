@@ -590,6 +590,80 @@ def _calcular_plano_tangente():
         print(f"{Cores.FAIL}Erro ao gerar grafico: {e}{Cores.ENDC}")
 
 
+def _extremos_condicionais():
+    """Calcula pontos extremos com uma restrição usando multiplicador de Lagrange."""
+    print("\n" + "-" * 70)
+    print("MÁXIMOS E MÍNIMOS CONDICIONAIS (LAGRANGE)")
+    print("-" * 70)
+    print("\nObjetivo: encontrar pontos que maximizam/minimizam f(x, y, ...) sujeitos a g(x, y, ...) = 0")
+
+    objetivo = input("\nDigite a função objetivo f (ex: x**2 + y**2): ").strip()
+    restricao_raw = input("Digite a restrição (ex: x + y - 1 = 0): ").strip()
+
+    if "=" in restricao_raw:
+        parte_esq, parte_dir = restricao_raw.split("=", 1)
+        restricao = f"({parte_esq}) - ({parte_dir})"
+    else:
+        restricao = restricao_raw
+
+    valida_obj, erro = EngineCalculo.validar_expressao(objetivo)
+    if not valida_obj:
+        print(f"{Cores.FAIL}❌ Função objetivo inválida: {erro}{Cores.ENDC}")
+        return
+
+    valida_res, erro = EngineCalculo.validar_expressao(restricao)
+    if not valida_res:
+        print(f"{Cores.FAIL}❌ Restrição inválida: {erro}{Cores.ENDC}")
+        return
+
+    resultados = Extremos.extremos_condicionais_lagrange(objetivo, restricao)
+    if not resultados:
+        print(f"\n{Cores.WARNING}⚠ Nenhum ponto crítico encontrado para esse problema.{Cores.ENDC}")
+        return
+
+    print(f"\n{Cores.OKGREEN}✓ Pontos críticos (restrição satisfeita):{Cores.ENDC}")
+    for idx, item in enumerate(resultados, 1):
+        ponto_txt = ", ".join(f"{var}={valor:.6g}" for var, valor in item["ponto"].items())
+        lamb = item["lambda"]
+        texto_lambda = f"{lamb:.6g}" if lamb is not None else "N/A"
+        print(f"\n  {idx}. {ponto_txt}")
+        print(f"     f(ponto) = {item['valor_funcao']:.6g}")
+        print(f"     λ = {texto_lambda}")
+        print(f"     g(ponto) = {item['restricao']:.2e}")
+
+    valores = [item["valor_funcao"] for item in resultados]
+    maior = max(valores)
+    menor = min(valores)
+
+    pontos_max = [item for item in resultados if item["valor_funcao"] == maior]
+    pontos_min = [item for item in resultados if item["valor_funcao"] == menor]
+
+    print(f"\n{Cores.BOLD}Leitura rápida:{Cores.ENDC}")
+    if pontos_max:
+        pontos_txt = ", ".join(
+            "(" + ", ".join(f"{k}={v:.6g}" for k, v in p["ponto"].items()) + ")"
+            for p in pontos_max
+        )
+        print(f"  Candidato(s) com maior valor: {pontos_txt} => f = {maior:.6g}")
+    if pontos_min:
+        pontos_txt = ", ".join(
+            "(" + ", ".join(f"{k}={v:.6g}" for k, v in p["ponto"].items()) + ")"
+            for p in pontos_min
+        )
+        print(f"  Candidato(s) com menor valor: {pontos_txt} => f = {menor:.6g}")
+
+    print(
+        f"\n{Cores.WARNING}Observação:{Cores.ENDC} os pontos exibidos são candidatos locais."
+        " Para restrições não compactas, a existência de máximo/mínimo global precisa ser"
+        " confirmada com análise complementar."
+    )
+
+
+def menu_extremos_condicionais():
+    """Entrada dedicada para extremos condicionais no módulo de cálculo."""
+    _extremos_condicionais()
+
+
 def menu_derivadas_com_tangentes():
     """Menu interativo com opcoes de reta e plano tangente."""
     while True:
@@ -609,6 +683,7 @@ def menu_derivadas_com_tangentes():
         print("  8. Plano Tangente (duas variaveis)")
         print("  9. Derivada Direcional")
         print("  10. Extremos em 2 Variaveis (Maximos/Minimos/Sela)")
+        print("  11. Maximos e Minimos Condicionais (Lagrange)")
 
         print(f"\n  {Cores.OKBLUE}0{Cores.ENDC}. Voltar ao Menu Anterior\n")
 
@@ -636,6 +711,8 @@ def menu_derivadas_com_tangentes():
             _derivada_direcional()
         elif escolha == '10':
             _extremos_2var()
+        elif escolha == '11':
+            _extremos_condicionais()
         else:
             print(f"{Cores.FAIL}Erro: opcao invalida!{Cores.ENDC}")
 
